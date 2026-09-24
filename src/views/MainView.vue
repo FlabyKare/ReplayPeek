@@ -1,12 +1,17 @@
 <script setup lang="ts">
 import { onMounted } from 'vue'
 import RegionSummary from '@/components/RegionSummary.vue'
+import HotkeyEditor from '@/components/HotkeyEditor.vue'
 import { useAppStore } from '@/stores/app'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
 import { toAppError } from '@/types/errors'
 
 const store = useAppStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
+
+function saveHotkey(hotkey: string): void {
+  void store.updateCaptureHotkey(hotkey)
+}
 
 onMounted(async () => {
   try {
@@ -44,7 +49,7 @@ onMounted(async () => {
         <button class="primary-button" type="button" :disabled="selecting" @click="selectRegion">
           <span class="primary-button__icon">⌗</span>
           {{ selecting ? 'Открываем…' : 'Выбрать область' }}
-          <kbd>Ctrl</kbd><b>+</b><kbd>Shift</kbd><b>+</b><kbd>S</kbd>
+          <kbd>{{ store.settings?.hotkeys.captureRegion ?? 'Ctrl+Shift+S' }}</kbd>
         </button>
       </div>
 
@@ -79,10 +84,11 @@ onMounted(async () => {
       <article class="panel">
         <span class="eyebrow">HOTKEY</span>
         <h2>Глобальная клавиша</h2>
-        <div class="setting-row">
-          <span>Capture region</span>
-          <code>{{ store.settings?.hotkeys.captureRegion ?? 'Ctrl+Shift+S' }}</code>
-        </div>
+        <HotkeyEditor
+          :model-value="store.settings?.hotkeys.captureRegion ?? 'Ctrl+Shift+S'"
+          :saving="store.hotkeySaving"
+          @save="saveHotkey"
+        />
       </article>
 
       <article class="panel panel--muted">

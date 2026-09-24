@@ -32,6 +32,7 @@ pub fn run() {
             commands::capture::complete_region_selection,
             commands::settings::get_settings,
             commands::settings::save_settings,
+            commands::settings::update_capture_hotkey,
             commands::system::get_runtime_status,
         ])
         .on_window_event(|window, event| {

@@ -51,6 +51,15 @@ impl SettingsRepository {
         Ok(())
     }
 
+    pub fn set_capture_hotkey(&self, hotkey: String) -> AppResult<AppSettings> {
+        let mut settings = self.value.read().clone();
+        settings.hotkeys.capture_region = hotkey;
+        validate_settings(&settings)?;
+        self.persist(&settings)?;
+        *self.value.write() = settings.clone();
+        Ok(settings)
+    }
+
     fn persist(&self, settings: &AppSettings) -> AppResult<()> {
         if let Some(parent) = self.path.parent() {
             fs::create_dir_all(parent)

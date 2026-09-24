@@ -37,6 +37,13 @@ body,
   margin: 0;
 }
 
+html.selection-document,
+html.selection-document body,
+html.selection-document #app {
+  min-width: 0;
+  background: transparent;
+}
+
 button,
 input {
   font: inherit;
@@ -316,6 +323,11 @@ button {
   color: #c4b5fd;
   cursor: pointer;
   font-size: 11px;
+
+  &:disabled {
+    cursor: wait;
+    opacity: 0.55;
+  }
 }
 
 .region-summary,
@@ -325,6 +337,76 @@ button {
   gap: 12px;
   color: $muted;
   font-size: 12px;
+}
+
+.hotkey-editor {
+  display: grid;
+  gap: 10px;
+  margin-top: 18px;
+
+  &__recorder {
+    width: 100%;
+    min-height: 44px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 14px;
+    padding: 10px 12px;
+    border: 1px solid $line;
+    border-radius: 10px;
+    outline: none;
+    background: rgba(0, 0, 0, 0.2);
+    color: #ddd6fe;
+    cursor: pointer;
+    font-size: 12px;
+    font-weight: 700;
+    text-align: left;
+
+    span {
+      color: $muted;
+      font-size: 10px;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+    }
+
+    kbd {
+      flex: 0 0 auto;
+      padding: 6px 9px;
+      border: 1px solid rgba($accent-2, 0.22);
+      border-radius: 6px;
+      background: rgba($accent-2, 0.06);
+      color: $text;
+      font-size: 11px;
+      white-space: nowrap;
+    }
+
+    &:focus-visible,
+    &--recording {
+      border-color: rgba($accent-2, 0.72);
+      box-shadow: 0 0 0 3px rgba($accent-2, 0.1);
+      color: $text;
+    }
+  }
+
+  &__footer {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+
+    span {
+      color: $muted;
+      font-size: 10px;
+      line-height: 1.35;
+    }
+  }
+
+  &__error {
+    margin: 0;
+    color: #fecdd3;
+    font-size: 11px;
+  }
 }
 
 .region-summary {
@@ -378,7 +460,9 @@ button {
   position: fixed;
   inset: 0;
   overflow: hidden;
-  background: rgba(3, 5, 10, 0.58);
+  // WebView2 hit-tests fully transparent layered pixels as click-through.
+  // A 1% alpha is visually transparent while keeping selection input active.
+  background: rgba(0, 0, 0, 0.01);
   cursor: crosshair;
   user-select: none;
   touch-action: none;
@@ -412,12 +496,52 @@ button {
 
 .selection {
   position: absolute;
+  z-index: 3;
+  display: none;
   border: 2px solid $accent-2;
+  outline: 1px solid rgba(0, 0, 0, 0.88);
+  outline-offset: 1px;
   background: transparent;
   box-shadow:
-    0 0 0 99999px rgba(3, 5, 10, 0.28),
-    0 0 18px rgba($accent-2, 0.45);
+    inset 0 0 0 1px rgba(255, 255, 255, 0.7),
+    0 0 22px rgba($accent-2, 0.8);
   pointer-events: none;
+
+  &__corner {
+    position: absolute;
+    width: 16px;
+    height: 16px;
+    border-color: $accent-2;
+    filter: drop-shadow(0 0 4px rgba($accent-2, 0.75));
+
+    &--top-left {
+      top: -3px;
+      left: -3px;
+      border-top: 3px solid;
+      border-left: 3px solid;
+    }
+
+    &--top-right {
+      top: -3px;
+      right: -3px;
+      border-top: 3px solid;
+      border-right: 3px solid;
+    }
+
+    &--bottom-left {
+      bottom: -3px;
+      left: -3px;
+      border-bottom: 3px solid;
+      border-left: 3px solid;
+    }
+
+    &--bottom-right {
+      right: -3px;
+      bottom: -3px;
+      border-right: 3px solid;
+      border-bottom: 3px solid;
+    }
+  }
 
   &__size {
     position: absolute;
