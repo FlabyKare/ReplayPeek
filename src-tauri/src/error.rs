@@ -28,6 +28,10 @@ impl AppError {
         )
     }
 
+    pub fn ocr(error: impl std::fmt::Display) -> Self {
+        Self::new("ocr_error", format!("Не удалось распознать текст: {error}"))
+    }
+
     pub fn window(error: impl std::fmt::Display) -> Self {
         Self::new("window_error", format!("Ошибка окна: {error}"))
     }

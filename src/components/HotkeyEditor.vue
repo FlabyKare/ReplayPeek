@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { nextTick, onBeforeUnmount, ref, watch } from 'vue'
-import { hotkeyFromKeyboardEvent, isModifierKey } from '@/utils/hotkey'
+import { formatHotkeyLabel, hotkeyFromKeyboardEvent, isModifierKey } from '@/utils/hotkey'
 
 const props = defineProps<{
   modelValue: string
@@ -77,7 +77,7 @@ onBeforeUnmount(stopRecording)
       @keydown="record"
     >
       <span>Capture region</span>
-      <kbd>{{ recording ? 'Нажмите сочетание…' : draft }}</kbd>
+      <kbd>{{ recording ? 'Нажмите сочетание…' : formatHotkeyLabel(draft) }}</kbd>
     </button>
     <div class="hotkey-editor__footer">
       <span :class="{ 'hotkey-editor__error': validationMessage }">

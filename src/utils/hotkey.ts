@@ -15,9 +15,49 @@ const NAMED_KEYS: Readonly<Record<string, string>> = {
   ArrowDown: 'ArrowDown',
   ArrowLeft: 'ArrowLeft',
   ArrowRight: 'ArrowRight',
+  Backquote: 'Backquote',
+  Minus: 'Minus',
+  Equal: 'Equal',
+  BracketLeft: 'BracketLeft',
+  BracketRight: 'BracketRight',
+  Backslash: 'Backslash',
+  Semicolon: 'Semicolon',
+  Quote: 'Quote',
+  Comma: 'Comma',
+  Period: 'Period',
+  Slash: 'Slash',
+}
+
+const LEGACY_KEYS: Readonly<Record<number, string>> = {
+  8: 'Backspace',
+  9: 'Tab',
+  13: 'Enter',
+  32: 'Space',
+  33: 'PageUp',
+  34: 'PageDown',
+  35: 'End',
+  36: 'Home',
+  37: 'ArrowLeft',
+  38: 'ArrowUp',
+  39: 'ArrowRight',
+  40: 'ArrowDown',
+  45: 'Insert',
+  46: 'Delete',
+  186: 'Semicolon',
+  187: 'Equal',
+  188: 'Comma',
+  189: 'Minus',
+  190: 'Period',
+  191: 'Slash',
+  192: 'Backquote',
+  219: 'BracketLeft',
+  220: 'Backslash',
+  221: 'BracketRight',
+  222: 'Quote',
 }
 
 const CYRILLIC_PHYSICAL_KEYS: Readonly<Record<string, string>> = {
+  Ё: 'Backquote',
   Й: 'Q',
   Ц: 'W',
   У: 'E',
@@ -56,7 +96,7 @@ function keyFromLegacyCode(keyCode: number): string | undefined {
   if (keyCode >= 65 && keyCode <= 90) return String.fromCharCode(keyCode)
   if (keyCode >= 48 && keyCode <= 57) return String.fromCharCode(keyCode)
   if (keyCode >= 112 && keyCode <= 135) return `F${keyCode - 111}`
-  return undefined
+  return LEGACY_KEYS[keyCode]
 }
 
 function keyFromEvent(event: KeyboardEvent): string | undefined {
@@ -94,4 +134,8 @@ export function hotkeyFromKeyboardEvent(event: KeyboardEvent): string | null {
   if (!key) return null
   if (modifiers.length === 0 && !key.startsWith('F')) return null
   return [...modifiers, key].join('+')
+}
+
+export function formatHotkeyLabel(value: string): string {
+  return value.replace(/Backquote/g, '`')
 }

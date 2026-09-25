@@ -1,8 +1,13 @@
 # Reply Overlay
 
-Windows desktop utility built with Vue 3, TypeScript, Tauri 2 and Rust. Milestone 1
-implements a global `Ctrl+Shift+S` region selector, multi-monitor/DPI-aware coordinates,
-screen capture, tray operation and persisted settings.
+Windows desktop utility built with Vue 3, TypeScript, Tauri 2 and Rust. The current MVP
+implements a configurable global region-selection hotkey (including `Alt+Backquote`),
+multi-monitor/DPI-aware coordinates, screen capture, local Windows OCR, tray operation
+and persisted settings.
+
+OCR runs locally through the Windows 10/11 OCR engine; screenshots and recognized text
+are not sent to an external service. Install the corresponding Windows language pack if
+recognition for Russian or English is unavailable on the machine.
 
 ## Development
 

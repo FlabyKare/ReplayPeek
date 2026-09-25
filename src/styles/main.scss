@@ -315,6 +315,47 @@ button {
   }
 }
 
+.panel--ocr {
+  min-height: 250px;
+}
+
+.ocr-editor {
+  width: 100%;
+  min-height: 132px;
+  resize: vertical;
+  padding: 12px 13px;
+  border: 1px solid $line;
+  border-radius: 10px;
+  outline: none;
+  background: rgba(0, 0, 0, 0.24);
+  color: $text;
+  font:
+    12px/1.55 'Cascadia Code',
+    'SFMono-Regular',
+    Consolas,
+    monospace;
+
+  &:focus {
+    border-color: rgba($accent-2, 0.55);
+    box-shadow: 0 0 0 3px rgba($accent-2, 0.08);
+  }
+
+  &::placeholder {
+    color: #646b7c;
+  }
+}
+
+.ocr-meta {
+  min-height: 16px;
+  margin-top: 9px;
+  color: $muted;
+  font-size: 10px;
+
+  &__error {
+    color: #fda4af;
+  }
+}
+
 .ghost-button {
   padding: 7px 10px;
   border: 1px solid $line;

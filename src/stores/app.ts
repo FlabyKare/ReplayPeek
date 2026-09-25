@@ -1,15 +1,19 @@
 import { computed, ref } from 'vue'
 import { defineStore } from 'pinia'
-import type { CapturePayload } from '@/types/capture'
+import type { CapturePayload, OcrResult } from '@/types/capture'
 import type { AppSettings } from '@/types/settings'
 import { loadSettings } from '@/services/tauri/settings'
 import { getRuntimeStatus } from '@/services/tauri/system'
 import { setCaptureHotkey } from '@/services/tauri/hotkeys'
 import { toAppError, type RuntimeStatus } from '@/types/errors'
+import { normalizeOcrText } from '@/utils/text'
 
 export const useAppStore = defineStore('app', () => {
   const settings = ref<AppSettings | null>(null)
   const lastCapture = ref<CapturePayload | null>(null)
+  const lastOcrResult = ref<OcrResult | null>(null)
+  const ocrText = ref('')
+  const ocrErrorMessage = ref<string | null>(null)
   const loading = ref(false)
   const errorMessage = ref<string | null>(null)
   const runtimeStatus = ref<RuntimeStatus | null>(null)
@@ -34,6 +38,9 @@ export const useAppStore = defineStore('app', () => {
 
   function acceptCapture(capture: CapturePayload): void {
     lastCapture.value = capture
+    lastOcrResult.value = capture.ocrResult
+    ocrText.value = normalizeOcrText(capture.ocrResult?.text ?? '')
+    ocrErrorMessage.value = capture.ocrError?.message ?? null
     if (settings.value) settings.value.captureRegion = capture.region
     errorMessage.value = null
   }
@@ -60,6 +67,9 @@ export const useAppStore = defineStore('app', () => {
   return {
     settings,
     lastCapture,
+    lastOcrResult,
+    ocrText,
+    ocrErrorMessage,
     loading,
     errorMessage,
     runtimeStatus,

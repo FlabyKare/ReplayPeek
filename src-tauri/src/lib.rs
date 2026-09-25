@@ -3,6 +3,7 @@ mod commands;
 mod error;
 mod hotkeys;
 mod models;
+mod ocr;
 mod overlay;
 mod state;
 mod tray;

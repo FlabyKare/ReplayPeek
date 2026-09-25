@@ -27,6 +27,23 @@ pub struct CapturePayload {
     pub data_url: String,
     pub captured_at: String,
     pub duration_ms: u128,
+    pub ocr_result: Option<OcrResult>,
+    pub ocr_error: Option<crate::error::AppError>,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrLine {
+    pub text: String,
+}
+
+#[derive(Debug, Clone, Serialize)]
+#[serde(rename_all = "camelCase")]
+pub struct OcrResult {
+    pub text: String,
+    pub language: String,
+    pub lines: Vec<OcrLine>,
+    pub duration_ms: u128,
 }
 
 #[derive(Debug, Clone, Serialize, Deserialize)]

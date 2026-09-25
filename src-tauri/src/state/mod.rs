@@ -6,6 +6,7 @@ use parking_lot::Mutex;
 
 use crate::capture::{ScreenCapture, XcapScreenCapture};
 use crate::error::AppError;
+use crate::ocr::{OcrEngine, WindowsOcrEngine};
 
 pub use settings_repository::SettingsRepository;
 
@@ -23,6 +24,7 @@ pub struct RuntimeState {
 pub struct AppState {
     pub settings: SettingsRepository,
     pub capture: Arc<dyn ScreenCapture>,
+    pub ocr: Arc<dyn OcrEngine>,
     pub session: Mutex<SessionState>,
     pub runtime: Mutex<RuntimeState>,
 }
@@ -32,6 +34,7 @@ impl AppState {
         Self {
             settings,
             capture: Arc::new(XcapScreenCapture),
+            ocr: Arc::new(WindowsOcrEngine),
             session: Mutex::new(SessionState::default()),
             runtime: Mutex::new(RuntimeState::default()),
         }

@@ -55,11 +55,14 @@ pub async fn complete_region_selection(
     overlay::hide_selection_overlays(&app)?;
 
     let capture = state.capture.clone();
+    let ocr = state.ocr.clone();
+    let ocr_language = state.settings.get().language;
     let region_for_capture = region.clone();
     let started = Instant::now();
     let task = tauri::async_runtime::spawn_blocking(move || {
         std::thread::sleep(std::time::Duration::from_millis(120));
         let frame = capture.capture_region(&region_for_capture)?;
+        let ocr_result = ocr.recognize(&frame, &ocr_language);
         let image =
             ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(frame.width, frame.height, frame.rgba)
                 .ok_or_else(|| AppError::new("image_invalid", "Некорректный RGBA-буфер снимка"))?;
@@ -67,13 +70,13 @@ pub async fn complete_region_selection(
         image
             .write_to(&mut png, ImageFormat::Png)
             .map_err(AppError::capture)?;
-        Ok::<_, AppError>(png.into_inner())
+        Ok::<_, AppError>((png.into_inner(), ocr_result))
     })
     .await
     .map_err(|error| AppError::new("capture_task_failed", error.to_string()))?;
 
-    let png = match task {
-        Ok(png) => png,
+    let (png, ocr_result) = match task {
+        Ok(result) => result,
         Err(error) => {
             overlay::show_main_window(&app)?;
             if let Some(main) = app.get_webview_window("main") {
@@ -83,11 +86,30 @@ pub async fn complete_region_selection(
         }
     };
 
+    let (ocr_result, ocr_error) = match ocr_result {
+        Ok(result) => {
+            log::info!(
+                "OCR completed in {}ms using {} ({} characters)",
+                result.duration_ms,
+                result.language,
+                result.text.chars().count()
+            );
+            log::debug!("OCR result: {}", result.text);
+            (Some(result), None)
+        }
+        Err(error) => {
+            log::error!("OCR failed: {error}");
+            (None, Some(error))
+        }
+    };
+
     let payload = CapturePayload {
         region,
         data_url: format!("data:image/png;base64,{}", STANDARD.encode(png)),
         captured_at: Utc::now().to_rfc3339(),
         duration_ms: started.elapsed().as_millis(),
+        ocr_result,
+        ocr_error,
     };
 
     overlay::show_main_window(&app)?;
