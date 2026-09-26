@@ -55,27 +55,28 @@ pub async fn complete_region_selection(
     overlay::hide_selection_overlays(&app)?;
 
     let capture = state.capture.clone();
-    let ocr = state.ocr.clone();
     let ocr_language = state.settings.get().language;
     let region_for_capture = region.clone();
     let started = Instant::now();
     let task = tauri::async_runtime::spawn_blocking(move || {
         std::thread::sleep(std::time::Duration::from_millis(120));
         let frame = capture.capture_region(&region_for_capture)?;
-        let ocr_result = ocr.recognize(&frame, &ocr_language);
-        let image =
-            ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(frame.width, frame.height, frame.rgba)
-                .ok_or_else(|| AppError::new("image_invalid", "Некорректный RGBA-буфер снимка"))?;
+        let image = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
+            frame.width,
+            frame.height,
+            frame.rgba.clone(),
+        )
+        .ok_or_else(|| AppError::new("image_invalid", "Некорректный RGBA-буфер снимка"))?;
         let mut png = Cursor::new(Vec::new());
         image
             .write_to(&mut png, ImageFormat::Png)
             .map_err(AppError::capture)?;
-        Ok::<_, AppError>((png.into_inner(), ocr_result))
+        Ok::<_, AppError>((frame, png.into_inner()))
     })
     .await
     .map_err(|error| AppError::new("capture_task_failed", error.to_string()))?;
 
-    let (png, ocr_result) = match task {
+    let (frame, png) = match task {
         Ok(result) => result,
         Err(error) => {
             overlay::show_main_window(&app)?;
@@ -85,6 +86,24 @@ pub async fn complete_region_selection(
             return Err(error);
         }
     };
+
+    overlay::show_main_window(&app)?;
+    if let Some(main) = app.get_webview_window("main") {
+        if let Err(error) = main.emit("capture://processing", ()) {
+            log::warn!("failed to emit OCR processing event: {error}");
+        }
+    }
+
+    let ocr = state.ocr.clone();
+    let ocr_result =
+        tauri::async_runtime::spawn_blocking(move || ocr.recognize(&frame, &ocr_language))
+            .await
+            .unwrap_or_else(|error| {
+                Err(AppError::new(
+                    "ocr_task_failed",
+                    format!("Фоновая задача OCR завершилась с ошибкой: {error}"),
+                ))
+            });
 
     let (ocr_result, ocr_error) = match ocr_result {
         Ok(result) => {
@@ -112,7 +131,6 @@ pub async fn complete_region_selection(
         ocr_error,
     };
 
-    overlay::show_main_window(&app)?;
     if let Some(main) = app.get_webview_window("main") {
         main.emit("capture://completed", payload.clone())
             .map_err(AppError::window)?;

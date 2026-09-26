@@ -21,6 +21,10 @@ export function onCaptureCompleted(
   return listen<CapturePayload>('capture://completed', (event) => listener(event.payload))
 }
 
+export function onCaptureProcessing(listener: () => void): Promise<UnlistenFn> {
+  return listen('capture://processing', listener)
+}
+
 export function onNativeError(listener: (payload: AppErrorPayload) => void): Promise<UnlistenFn> {
   return listen<AppErrorPayload>('error://reported', (event) => listener(event.payload))
 }

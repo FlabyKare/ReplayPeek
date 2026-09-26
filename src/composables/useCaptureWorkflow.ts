@@ -1,7 +1,12 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { useAppStore } from '@/stores/app'
-import { onCaptureCompleted, onNativeError, startRegionSelection } from '@/services/tauri/capture'
+import {
+  onCaptureCompleted,
+  onCaptureProcessing,
+  onNativeError,
+  startRegionSelection,
+} from '@/services/tauri/capture'
 import { toAppError } from '@/types/errors'
 
 export function useCaptureWorkflow() {
@@ -23,6 +28,7 @@ export function useCaptureWorkflow() {
   onMounted(async () => {
     try {
       unlisteners.push(
+        await onCaptureProcessing(() => store.startOcrProcessing()),
         await onCaptureCompleted((capture) => store.acceptCapture(capture)),
         await onNativeError((error) => store.reportError(error.message)),
       )

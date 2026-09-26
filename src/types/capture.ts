@@ -26,6 +26,10 @@ export interface CapturePayload {
 
 export interface OcrLine {
   text: string
+  x: number
+  y: number
+  width: number
+  height: number
 }
 
 export interface OcrResult {

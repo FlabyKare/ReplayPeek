@@ -26,3 +26,12 @@ npm run build
 cargo fmt --manifest-path src-tauri/Cargo.toml --check
 cargo clippy --manifest-path src-tauri/Cargo.toml --all-targets -- -D warnings
 ```
+
+Create a Windows installer:
+
+```powershell
+npm run tauri build -- --bundles nsis
+```
+
+The portable executable is written to `src-tauri/target/release/reply-overlay.exe`;
+the installer is written to `src-tauri/target/release/bundle/nsis/`.

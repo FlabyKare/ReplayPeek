@@ -1,6 +1,6 @@
 use tauri::{
     menu::{Menu, MenuItem},
-    tray::TrayIconBuilder,
+    tray::{MouseButton, MouseButtonState, TrayIconBuilder, TrayIconEvent},
     Manager,
 };
 
@@ -19,6 +19,20 @@ pub fn install(app: &mut tauri::App) -> Result<(), Box<dyn std::error::Error>> {
         .icon(icon)
         .menu(&menu)
         .show_menu_on_left_click(false)
+        .on_tray_icon_event(|tray, event| {
+            if matches!(
+                event,
+                TrayIconEvent::Click {
+                    button: MouseButton::Left,
+                    button_state: MouseButtonState::Up,
+                    ..
+                }
+            ) {
+                if let Err(error) = overlay::show_main_window(tray.app_handle()) {
+                    log::error!("tray left-click open failed: {error}");
+                }
+            }
+        })
         .on_menu_event(|app, event| match event.id.as_ref() {
             "open" => {
                 if let Err(error) = overlay::show_main_window(app) {

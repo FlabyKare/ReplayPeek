@@ -128,10 +128,20 @@ onMounted(async () => {
           v-model="store.ocrText"
           class="ocr-editor"
           spellcheck="false"
-          placeholder="После выделения области здесь появится распознанный текст"
+          :aria-busy="store.ocrProcessing"
+          :placeholder="
+            store.ocrProcessing
+              ? 'Распознаём текст…'
+              : 'После выделения области здесь появится распознанный текст'
+          "
+          rows="12"
         />
         <footer class="ocr-meta">
-          <span v-if="store.ocrErrorMessage" class="ocr-meta__error">
+          <span v-if="store.ocrProcessing" class="ocr-meta__processing">
+            <i />
+            OCR работает в фоне — окно уже можно использовать
+          </span>
+          <span v-else-if="store.ocrErrorMessage" class="ocr-meta__error">
             {{ store.ocrErrorMessage }}
           </span>
           <span v-else-if="store.lastOcrResult">

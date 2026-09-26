@@ -35,6 +35,10 @@ pub struct CapturePayload {
 #[serde(rename_all = "camelCase")]
 pub struct OcrLine {
     pub text: String,
+    pub x: f32,
+    pub y: f32,
+    pub width: f32,
+    pub height: f32,
 }
 
 #[derive(Debug, Clone, Serialize)]

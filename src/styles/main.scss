@@ -316,24 +316,27 @@ button {
 }
 
 .panel--ocr {
-  min-height: 250px;
+  grid-column: 1 / -1;
+  min-height: 360px;
 }
 
 .ocr-editor {
   width: 100%;
-  min-height: 132px;
+  min-height: 230px;
   resize: vertical;
-  padding: 12px 13px;
+  padding: 16px 17px;
   border: 1px solid $line;
   border-radius: 10px;
   outline: none;
   background: rgba(0, 0, 0, 0.24);
   color: $text;
   font:
-    12px/1.55 'Cascadia Code',
-    'SFMono-Regular',
-    Consolas,
-    monospace;
+    13px/1.65 Inter,
+    ui-sans-serif,
+    system-ui,
+    'Segoe UI',
+    sans-serif;
+  letter-spacing: 0.005em;
 
   &:focus {
     border-color: rgba($accent-2, 0.55);
@@ -354,6 +357,22 @@ button {
   &__error {
     color: #fda4af;
   }
+
+  &__processing {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    color: #a5f3fc;
+
+    i {
+      width: 8px;
+      height: 8px;
+      border: 1px solid rgba($accent-2, 0.35);
+      border-top-color: $accent-2;
+      border-radius: 50%;
+      animation: ocr-spin 0.8s linear infinite;
+    }
+  }
 }
 
 .ghost-button {
@@ -366,7 +385,7 @@ button {
   font-size: 11px;
 
   &:disabled {
-    cursor: wait;
+    cursor: default;
     opacity: 0.55;
   }
 }
@@ -433,7 +452,7 @@ button {
   &__footer {
     display: flex;
     align-items: center;
-    justify-content: space-between;
+    justify-content: flex-start;
     gap: 12px;
 
     span {
@@ -447,6 +466,12 @@ button {
     margin: 0;
     color: #fecdd3;
     font-size: 11px;
+  }
+}
+
+@keyframes ocr-spin {
+  to {
+    transform: rotate(360deg);
   }
 }
 

@@ -1,8 +1,13 @@
 export function normalizeOcrText(value: string): string {
-  return value
-    .split(/\r?\n/)
-    .map((line) => line.trim().replace(/\s+/g, ' '))
-    .filter(Boolean)
-    .filter((line, index, lines) => index === 0 || line !== lines[index - 1])
-    .join('\n')
+  const result: string[] = []
+  for (const sourceLine of value.split(/\r?\n/)) {
+    const line = sourceLine.trim().replace(/\s+/g, ' ')
+    if (!line) {
+      if (result.length > 0 && result[result.length - 1] !== '') result.push('')
+      continue
+    }
+    if (result[result.length - 1] !== line) result.push(line)
+  }
+  while (result[result.length - 1] === '') result.pop()
+  return result.join('\n')
 }

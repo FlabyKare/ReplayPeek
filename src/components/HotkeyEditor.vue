@@ -58,10 +58,6 @@ function record(event: KeyboardEvent): void {
   emit('save', hotkey)
 }
 
-function save(): void {
-  if (draft.value !== props.modelValue && !props.saving) emit('save', draft.value)
-}
-
 onBeforeUnmount(stopRecording)
 </script>
 
@@ -83,17 +79,11 @@ onBeforeUnmount(stopRecording)
       <span :class="{ 'hotkey-editor__error': validationMessage }">
         {{
           validationMessage ??
-          (saving ? 'Регистрируем новую комбинацию…' : 'Нажмите поле и введите комбинацию')
+          (saving
+            ? 'Регистрируем новую комбинацию…'
+            : 'Нажмите поле и введите комбинацию — она сохранится автоматически')
         }}
       </span>
-      <button
-        class="ghost-button"
-        type="button"
-        :disabled="draft === modelValue || saving || Boolean(validationMessage)"
-        @click="save"
-      >
-        {{ saving ? 'Сохраняем…' : 'Применить' }}
-      </button>
     </div>
   </div>
 </template>

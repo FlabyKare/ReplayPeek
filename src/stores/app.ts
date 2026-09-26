@@ -14,6 +14,7 @@ export const useAppStore = defineStore('app', () => {
   const lastOcrResult = ref<OcrResult | null>(null)
   const ocrText = ref('')
   const ocrErrorMessage = ref<string | null>(null)
+  const ocrProcessing = ref(false)
   const loading = ref(false)
   const errorMessage = ref<string | null>(null)
   const runtimeStatus = ref<RuntimeStatus | null>(null)
@@ -41,8 +42,14 @@ export const useAppStore = defineStore('app', () => {
     lastOcrResult.value = capture.ocrResult
     ocrText.value = normalizeOcrText(capture.ocrResult?.text ?? '')
     ocrErrorMessage.value = capture.ocrError?.message ?? null
+    ocrProcessing.value = false
     if (settings.value) settings.value.captureRegion = capture.region
     errorMessage.value = null
+  }
+
+  function startOcrProcessing(): void {
+    ocrProcessing.value = true
+    ocrErrorMessage.value = null
   }
 
   function reportError(message: string): void {
@@ -70,6 +77,7 @@ export const useAppStore = defineStore('app', () => {
     lastOcrResult,
     ocrText,
     ocrErrorMessage,
+    ocrProcessing,
     loading,
     errorMessage,
     runtimeStatus,
@@ -77,6 +85,7 @@ export const useAppStore = defineStore('app', () => {
     captureRegion,
     initialize,
     acceptCapture,
+    startOcrProcessing,
     reportError,
     updateCaptureHotkey,
   }
