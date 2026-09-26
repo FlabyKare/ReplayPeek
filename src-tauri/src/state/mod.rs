@@ -1,6 +1,9 @@
 mod settings_repository;
 
-use std::sync::Arc;
+use std::sync::{
+    atomic::{AtomicBool, Ordering},
+    Arc,
+};
 
 use parking_lot::Mutex;
 
@@ -27,6 +30,7 @@ pub struct AppState {
     pub ocr: Arc<dyn OcrEngine>,
     pub session: Mutex<SessionState>,
     pub runtime: Mutex<RuntimeState>,
+    pub update_in_progress: AtomicBool,
 }
 
 impl AppState {
@@ -37,6 +41,17 @@ impl AppState {
             ocr: Arc::new(WindowsOcrEngine),
             session: Mutex::new(SessionState::default()),
             runtime: Mutex::new(RuntimeState::default()),
+            update_in_progress: AtomicBool::new(false),
         }
+    }
+
+    pub fn begin_update_check(&self) -> bool {
+        self.update_in_progress
+            .compare_exchange(false, true, Ordering::AcqRel, Ordering::Acquire)
+            .is_ok()
+    }
+
+    pub fn finish_update_check(&self) {
+        self.update_in_progress.store(false, Ordering::Release);
     }
 }

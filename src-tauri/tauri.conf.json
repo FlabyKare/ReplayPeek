@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
-  "productName": "Reply Overlay",
-  "version": "0.1.0",
+  "productName": "ReplayPeek",
+  "version": "0.2.0",
   "identifier": "app.reply-overlay.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -13,7 +13,7 @@
     "windows": [
       {
         "label": "main",
-        "title": "Reply Overlay",
+        "title": "ReplayPeek",
         "width": 980,
         "height": 760,
         "minWidth": 760,
@@ -29,11 +29,22 @@
   },
   "bundle": {
     "active": true,
-    "targets": ["nsis", "msi"],
+    "targets": ["nsis"],
+    "createUpdaterArtifacts": true,
     "shortDescription": "Capture text and prepare quick replies",
     "windows": {
       "wix": null,
       "nsis": null
+    }
+  },
+  "plugins": {
+    "updater": {
+      "endpoints": ["https://github.com/FlabyKare/ReplayPeek/releases/latest/download/latest.json"],
+      "pubkey": "dW50cnVzdGVkIGNvbW1lbnQ6IG1pbmlzaWduIHB1YmxpYyBrZXk6IEQzRUFCM0EwRjk0NzBDNwpSV1RIY0pRUE9xcytEWWFjcjc3QkJqQmZ1VW5ORndPSlJmWnl1MWpGa29VSmdiWmR2M2diOWNVbAo=",
+      "requireSignedVersion": true,
+      "windows": {
+        "installMode": "passive"
+      }
     }
   }
 }

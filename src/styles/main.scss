@@ -69,6 +69,51 @@ button {
   border-bottom: 1px solid $line;
 }
 
+.topbar__actions {
+  display: flex;
+  align-items: center;
+  gap: 9px;
+}
+
+.update-status {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 7px 11px;
+  border: 1px solid $line;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.025);
+  color: $muted;
+  cursor: pointer;
+  font-size: 12px;
+
+  &:disabled {
+    cursor: default;
+  }
+
+  i {
+    width: 7px;
+    height: 7px;
+    border-radius: 50%;
+    background: $accent-2;
+  }
+
+  &--error {
+    color: #fda4af;
+
+    i {
+      background: #fb7185;
+    }
+  }
+
+  &__spinner {
+    border: 1px solid rgba($accent-2, 0.35);
+    border-top-color: $accent-2;
+    background: transparent !important;
+    animation: ocr-spin 0.8s linear infinite;
+  }
+}
+
 .brand {
   display: flex;
   align-items: center;

@@ -7,6 +7,7 @@ mod ocr;
 mod overlay;
 mod state;
 mod tray;
+mod updates;
 
 use std::path::PathBuf;
 
@@ -18,6 +19,7 @@ pub fn run() {
     env_logger::Builder::from_env(env_logger::Env::default().default_filter_or("info")).init();
 
     tauri::Builder::default()
+        .plugin(tauri_plugin_updater::Builder::new().build())
         .setup(|app| {
             let settings_path: PathBuf = app.path().app_config_dir()?.join("settings.json");
             let settings = SettingsRepository::load(settings_path)?;
@@ -25,6 +27,7 @@ pub fn run() {
             overlay::prepare_selection_overlays(app.handle())?;
             hotkeys::install(app)?;
             tray::install(app)?;
+            updates::start_automatic_check(app.handle().clone());
             Ok(())
         })
         .invoke_handler(tauri::generate_handler![
@@ -35,6 +38,7 @@ pub fn run() {
             commands::settings::save_settings,
             commands::settings::update_capture_hotkey,
             commands::system::get_runtime_status,
+            updates::check_for_updates,
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {

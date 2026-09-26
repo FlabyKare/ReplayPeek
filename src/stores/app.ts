@@ -7,6 +7,7 @@ import { getRuntimeStatus } from '@/services/tauri/system'
 import { setCaptureHotkey } from '@/services/tauri/hotkeys'
 import { toAppError, type RuntimeStatus } from '@/types/errors'
 import { normalizeOcrText } from '@/utils/text'
+import type { UpdateStatus } from '@/types/update'
 
 export const useAppStore = defineStore('app', () => {
   const settings = ref<AppSettings | null>(null)
@@ -19,6 +20,7 @@ export const useAppStore = defineStore('app', () => {
   const errorMessage = ref<string | null>(null)
   const runtimeStatus = ref<RuntimeStatus | null>(null)
   const hotkeySaving = ref(false)
+  const updateStatus = ref<UpdateStatus | null>(null)
 
   const captureRegion = computed(
     () => lastCapture.value?.region ?? settings.value?.captureRegion ?? null,
@@ -56,6 +58,10 @@ export const useAppStore = defineStore('app', () => {
     errorMessage.value = message
   }
 
+  function acceptUpdateStatus(status: UpdateStatus): void {
+    updateStatus.value = status
+  }
+
   async function updateCaptureHotkey(hotkey: string): Promise<boolean> {
     hotkeySaving.value = true
     errorMessage.value = null
@@ -82,11 +88,13 @@ export const useAppStore = defineStore('app', () => {
     errorMessage,
     runtimeStatus,
     hotkeySaving,
+    updateStatus,
     captureRegion,
     initialize,
     acceptCapture,
     startOcrProcessing,
     reportError,
+    acceptUpdateStatus,
     updateCaptureHotkey,
   }
 })

@@ -6,9 +6,11 @@ import { useAppStore } from '@/stores/app'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
 import { toAppError } from '@/types/errors'
 import { formatHotkeyLabel } from '@/utils/hotkey'
+import { useAutoUpdater } from '@/composables/useAutoUpdater'
 
 const store = useAppStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
+const { checking: updateChecking, checkNow: checkForUpdates } = useAutoUpdater()
 const copyLabel = ref('Копировать')
 
 function saveHotkey(hotkey: string): void {
@@ -44,16 +46,28 @@ onMounted(async () => {
       <div class="brand">
         <span class="brand__mark">R</span>
         <div>
-          <strong>Reply Overlay</strong>
+          <strong>ReplayPeek</strong>
           <span>gaming reply utility</span>
         </div>
       </div>
-      <div
-        class="status-pill"
-        :class="{ 'status-pill--warning': !store.runtimeStatus?.hotkeyRegistered }"
-      >
-        <span />
-        {{ store.runtimeStatus?.hotkeyRegistered ? 'Hotkey активен' : 'Hotkey недоступен' }}
+      <div class="topbar__actions">
+        <button
+          class="update-status"
+          :class="{ 'update-status--error': store.updateStatus?.state === 'error' }"
+          type="button"
+          :disabled="updateChecking"
+          @click="checkForUpdates"
+        >
+          <i :class="{ 'update-status__spinner': updateChecking }" />
+          {{ store.updateStatus?.message ?? 'Проверить обновления' }}
+        </button>
+        <div
+          class="status-pill"
+          :class="{ 'status-pill--warning': !store.runtimeStatus?.hotkeyRegistered }"
+        >
+          <span />
+          {{ store.runtimeStatus?.hotkeyRegistered ? 'Hotkey активен' : 'Hotkey недоступен' }}
+        </div>
       </div>
     </header>
 
