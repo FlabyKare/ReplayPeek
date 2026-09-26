@@ -39,6 +39,7 @@ pub fn run() {
             commands::settings::update_capture_hotkey,
             commands::system::get_runtime_status,
             updates::check_for_updates,
+            updates::install_available_update,
         ])
         .on_window_event(|window, event| {
             if window.label() == "main" {

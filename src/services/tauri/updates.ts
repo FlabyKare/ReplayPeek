@@ -8,6 +8,10 @@ export function checkForUpdates(): Promise<void> {
   return invokeCommand<void>('check_for_updates')
 }
 
+export function installAvailableUpdate(): Promise<void> {
+  return invokeCommand<void>('install_available_update')
+}
+
 export function onUpdateStatus(handler: (status: UpdateStatus) => void): Promise<UnlistenFn> {
   return listen<UpdateStatus>(UPDATE_STATUS_EVENT, (event) => handler(event.payload))
 }

@@ -6,4 +6,5 @@ export interface UpdateStatus {
   message: string
   version: string | null
   progress: number | null
+  notes: string | null
 }

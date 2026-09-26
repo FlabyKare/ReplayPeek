@@ -19,6 +19,7 @@ struct UpdateStatus {
     message: String,
     version: Option<String>,
     progress: Option<u8>,
+    notes: Option<String>,
 }
 
 fn emit_status(
@@ -27,12 +28,14 @@ fn emit_status(
     message: impl Into<String>,
     version: Option<String>,
     progress: Option<u8>,
+    notes: Option<String>,
 ) {
     let status = UpdateStatus {
         state,
         message: message.into(),
         version,
         progress,
+        notes,
     };
     log::info!("updater status: {} - {}", status.state, status.message);
     if let Err(error) = app.emit_to("main", UPDATE_EVENT, status) {
@@ -41,7 +44,7 @@ fn emit_status(
 }
 
 async fn run_check(app: AppHandle) -> AppResult<()> {
-    emit_status(&app, "checking", "Проверяем обновления…", None, None);
+    emit_status(&app, "checking", "Проверяем обновления…", None, None, None);
 
     let updater = app
         .updater()
@@ -57,6 +60,7 @@ async fn run_check(app: AppHandle) -> AppResult<()> {
             "Установлена актуальная версия",
             None,
             None,
+            None,
         );
         return Ok(());
     };
@@ -66,9 +70,44 @@ async fn run_check(app: AppHandle) -> AppResult<()> {
         &app,
         "available",
         format!("Доступна версия {version}"),
-        Some(version.clone()),
+        Some(version),
         Some(0),
+        update.body,
     );
+
+    Ok(())
+}
+
+async fn run_install(app: AppHandle) -> AppResult<()> {
+    emit_status(
+        &app,
+        "checking",
+        "Подготавливаем обновление…",
+        None,
+        None,
+        None,
+    );
+
+    let updater = app
+        .updater()
+        .map_err(|error| AppError::new("updater_error", error.to_string()))?;
+    let Some(update) = updater
+        .check()
+        .await
+        .map_err(|error| AppError::new("updater_error", error.to_string()))?
+    else {
+        emit_status(
+            &app,
+            "upToDate",
+            "Установлена актуальная версия",
+            None,
+            None,
+            None,
+        );
+        return Ok(());
+    };
+
+    let version = update.version.clone();
 
     let progress_app = app.clone();
     let progress_version = version.clone();
@@ -90,6 +129,7 @@ async fn run_check(app: AppHandle) -> AppResult<()> {
                             format!("Скачиваем обновление: {progress}%"),
                             Some(progress_version.clone()),
                             Some(progress),
+                            None,
                         );
                     }
                 }
@@ -104,6 +144,7 @@ async fn run_check(app: AppHandle) -> AppResult<()> {
                         "Устанавливаем обновление и перезапускаем приложение…",
                         Some(version),
                         Some(100),
+                        None,
                     );
                 }
             },
@@ -114,7 +155,13 @@ async fn run_check(app: AppHandle) -> AppResult<()> {
     Ok(())
 }
 
-fn spawn_check(app: AppHandle) -> AppResult<()> {
+#[derive(Clone, Copy)]
+enum UpdateTask {
+    Check,
+    Install,
+}
+
+fn spawn_task(app: AppHandle, task: UpdateTask) -> AppResult<()> {
     let state = app.state::<AppState>();
     if !state.begin_update_check() {
         return Err(AppError::new(
@@ -124,9 +171,13 @@ fn spawn_check(app: AppHandle) -> AppResult<()> {
     }
 
     tauri::async_runtime::spawn(async move {
-        if let Err(error) = run_check(app.clone()).await {
-            log::error!("update check failed: {error}");
-            emit_status(&app, "error", error.message, None, None);
+        let result = match task {
+            UpdateTask::Check => run_check(app.clone()).await,
+            UpdateTask::Install => run_install(app.clone()).await,
+        };
+        if let Err(error) = result {
+            log::error!("update operation failed: {error}");
+            emit_status(&app, "error", error.message, None, None, None);
         }
         app.state::<AppState>().finish_update_check();
     });
@@ -138,7 +189,7 @@ pub fn start_automatic_check(app: AppHandle) {
     #[cfg(not(debug_assertions))]
     thread::spawn(move || {
         thread::sleep(Duration::from_secs(5));
-        if let Err(error) = spawn_check(app) {
+        if let Err(error) = spawn_task(app, UpdateTask::Check) {
             log::warn!("automatic update check was not started: {error}");
         }
     });
@@ -149,5 +200,10 @@ pub fn start_automatic_check(app: AppHandle) {
 
 #[tauri::command]
 pub fn check_for_updates(app: AppHandle) -> AppResult<()> {
-    spawn_check(app)
+    spawn_task(app, UpdateTask::Check)
+}
+
+#[tauri::command]
+pub fn install_available_update(app: AppHandle) -> AppResult<()> {
+    spawn_task(app, UpdateTask::Install)
 }

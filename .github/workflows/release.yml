@@ -38,7 +38,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'ReplayPeek v__VERSION__'
-          releaseBody: 'Подписанная версия ReplayPeek для Windows. После установки следующие обновления загружаются автоматически.'
+          releaseBody: 'Обновления ReplayPeek теперь устанавливаются только с согласия пользователя: «Обновить сейчас» или «Остаться на текущей версии».'
           releaseDraft: false
           prerelease: false
           args: --bundles nsis

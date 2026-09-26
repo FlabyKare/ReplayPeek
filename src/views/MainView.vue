@@ -2,6 +2,7 @@
 import { onMounted, ref } from 'vue'
 import RegionSummary from '@/components/RegionSummary.vue'
 import HotkeyEditor from '@/components/HotkeyEditor.vue'
+import UpdatePrompt from '@/components/UpdatePrompt.vue'
 import { useAppStore } from '@/stores/app'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
 import { toAppError } from '@/types/errors'
@@ -10,7 +11,13 @@ import { useAutoUpdater } from '@/composables/useAutoUpdater'
 
 const store = useAppStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
-const { checking: updateChecking, checkNow: checkForUpdates } = useAutoUpdater()
+const {
+  checking: updateChecking,
+  promptVisible: updatePromptVisible,
+  installNow: installUpdate,
+  keepCurrentVersion,
+  showUpdate,
+} = useAutoUpdater()
 const copyLabel = ref('Копировать')
 
 function saveHotkey(hotkey: string): void {
@@ -56,7 +63,7 @@ onMounted(async () => {
           :class="{ 'update-status--error': store.updateStatus?.state === 'error' }"
           type="button"
           :disabled="updateChecking"
-          @click="checkForUpdates"
+          @click="showUpdate"
         >
           <i :class="{ 'update-status__spinner': updateChecking }" />
           {{ store.updateStatus?.message ?? 'Проверить обновления' }}
@@ -166,5 +173,12 @@ onMounted(async () => {
         </footer>
       </article>
     </section>
+
+    <UpdatePrompt
+      v-if="updatePromptVisible && store.updateStatus"
+      :status="store.updateStatus"
+      @update="installUpdate"
+      @skip="keepCurrentVersion"
+    />
   </main>
 </template>
