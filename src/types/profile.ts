@@ -1,8 +1,8 @@
 import type { AppSettings } from './settings'
 
-export type DashboardBlockId = 'capture' | 'hotkey' | 'ocr'
+export type DashboardBlockId = 'capture' | 'hotkey' | 'ocr' | 'reply'
 export type DashboardBlockSpan = 1 | 2
-export type DashboardBlockHeight = 'compact' | 'normal' | 'tall'
+export type DashboardBlockHeight = number
 
 export interface DashboardBlockLayout {
   id: DashboardBlockId
@@ -33,7 +33,8 @@ export interface WorkspaceSnapshot {
 }
 
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardBlockLayout[] = [
-  { id: 'capture', span: 2, height: 'compact' },
-  { id: 'hotkey', span: 1, height: 'normal' },
-  { id: 'ocr', span: 2, height: 'tall' },
+  { id: 'capture', span: 2, height: 170 },
+  { id: 'hotkey', span: 1, height: 280 },
+  { id: 'ocr', span: 2, height: 410 },
+  { id: 'reply', span: 1, height: 280 },
 ]

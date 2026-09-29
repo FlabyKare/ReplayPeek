@@ -105,7 +105,7 @@ export const useAppStore = defineStore('app', () => {
   }
 
   async function updatePreferences(
-    values: Pick<AppSettings, 'language' | 'replyStyle' | 'captureFps'>,
+    values: Pick<AppSettings, 'language' | 'replyStyle' | 'captureFps' | 'autoGenerateReply'>,
   ): Promise<void> {
     if (!settings.value) return
     const nextSettings: AppSettings = { ...settings.value, ...values }

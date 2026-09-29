@@ -37,6 +37,57 @@ function createProfileRecord(name: string, settings: AppSettings): UserProfile {
   }
 }
 
+const legacyHeights: Record<string, number> = {
+  compact: 170,
+  normal: 280,
+  tall: 410,
+}
+
+function normalizeLayout(value: unknown): UserProfile['dashboardLayout'] {
+  const source = Array.isArray(value) ? value : []
+  const result: UserProfile['dashboardLayout'] = []
+
+  for (const item of source) {
+    if (!item || typeof item !== 'object') continue
+    const candidate = item as Record<string, unknown>
+    const fallback = DEFAULT_DASHBOARD_LAYOUT.find((block) => block.id === candidate.id)
+    if (!fallback || result.some((block) => block.id === fallback.id)) continue
+    const legacyHeight =
+      typeof candidate.height === 'string' ? legacyHeights[candidate.height] : null
+    const height = typeof candidate.height === 'number' ? candidate.height : legacyHeight
+    result.push({
+      id: fallback.id,
+      span: candidate.span === 1 ? 1 : 2,
+      height: Math.round(Math.max(150, Math.min(760, height ?? fallback.height))),
+    })
+  }
+
+  for (const block of DEFAULT_DASHBOARD_LAYOUT) {
+    if (!result.some((item) => item.id === block.id)) result.push(clone(block))
+  }
+  return result
+}
+
+function normalizeSettings(value: unknown, fallback: AppSettings): AppSettings {
+  if (!value || typeof value !== 'object') return clone(fallback)
+  const candidate = value as Partial<AppSettings>
+  return {
+    ...clone(fallback),
+    ...candidate,
+    autoGenerateReply: candidate.autoGenerateReply === true,
+    hotkeys: { ...fallback.hotkeys, ...candidate.hotkeys },
+  }
+}
+
+function normalizeProfile(profile: UserProfile, fallback: AppSettings): UserProfile {
+  return {
+    ...profile,
+    settings: normalizeSettings(profile.settings, fallback),
+    dashboardLayout: normalizeLayout(profile.dashboardLayout),
+    telegram: profile.telegram ?? null,
+  }
+}
+
 function loadWorkspace(): PersistedWorkspace | null {
   try {
     const raw = localStorage.getItem(STORAGE_KEY)
@@ -77,8 +128,9 @@ export const useWorkspaceStore = defineStore('workspace', () => {
   function initialize(baseSettings: AppSettings): AppSettings {
     const saved = loadWorkspace()
     if (saved && saved.profiles.some((profile) => profile.id === saved.activeProfileId)) {
-      profiles.value = saved.profiles
+      profiles.value = saved.profiles.map((profile) => normalizeProfile(profile, baseSettings))
       activeProfileId.value = saved.activeProfileId
+      persist()
     } else {
       const profile = createProfileRecord('Основной', baseSettings)
       profiles.value = [profile]
@@ -158,7 +210,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     const block = activeProfile.value?.dashboardLayout.find((item) => item.id === blockId)
     if (!block) return
     block.span = span
-    block.height = height
+    block.height = Math.round(Math.max(150, Math.min(760, height)))
     persist()
   }
 
@@ -184,14 +236,15 @@ export const useWorkspaceStore = defineStore('workspace', () => {
           profile &&
           typeof profile.id === 'string' &&
           typeof profile.name === 'string' &&
-          profile.settings &&
-          Array.isArray(profile.dashboardLayout),
+          profile.settings,
       ) ||
       !candidate.profiles.some((profile) => profile.id === candidate.activeProfileId)
     ) {
       return false
     }
-    profiles.value = clone(candidate.profiles)
+    const fallback = activeProfile.value?.settings
+    if (!fallback) return false
+    profiles.value = candidate.profiles.map((profile) => normalizeProfile(profile, fallback))
     activeProfileId.value = candidate.activeProfileId
     persist()
     return true

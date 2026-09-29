@@ -4,6 +4,7 @@ import UpdatePrompt from '@/components/UpdatePrompt.vue'
 import DashboardGrid from '@/components/DashboardGrid.vue'
 import SettingsDrawer from '@/components/SettingsDrawer.vue'
 import { useAppStore } from '@/stores/app'
+import { useAiStore } from '@/stores/ai'
 import { useCloudStore } from '@/stores/cloud'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
@@ -12,6 +13,7 @@ import { formatHotkeyLabel } from '@/utils/hotkey'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
 
 const store = useAppStore()
+const ai = useAiStore()
 const cloud = useCloudStore()
 const workspace = useWorkspaceStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
@@ -23,6 +25,7 @@ const {
   showUpdate,
 } = useAutoUpdater()
 const copyLabel = ref('Копировать')
+const replyCopyLabel = ref('Копировать')
 const settingsOpen = ref(false)
 
 function saveHotkey(hotkey: string): void {
@@ -59,6 +62,25 @@ async function copyOcrText(): Promise<void> {
   } finally {
     window.setTimeout(() => {
       copyLabel.value = 'Копировать'
+    }, 1_500)
+  }
+}
+
+function generateReply(): void {
+  if (!store.settings || !store.ocrText) return
+  void ai.generate(store.ocrText, store.settings)
+}
+
+async function copyReply(): Promise<void> {
+  if (!ai.reply) return
+  try {
+    await navigator.clipboard.writeText(ai.reply)
+    replyCopyLabel.value = 'Скопировано'
+  } catch (error: unknown) {
+    store.reportError(toAppError(error).message)
+  } finally {
+    window.setTimeout(() => {
+      replyCopyLabel.value = 'Копировать'
     }, 1_500)
   }
 }
@@ -142,7 +164,7 @@ onMounted(async () => {
     </p>
 
     <div v-if="workspace.layoutEditing" class="layout-edit-banner">
-      <span>Перетаскивайте блоки за ⠿ и меняйте их размер кнопками.</span>
+      <span>Перетаскивайте блоки за ⠿ и тяните угол снизу справа для изменения размера.</span>
       <button class="ghost-button" type="button" @click="workspace.layoutEditing = false">
         Готово
       </button>
@@ -159,11 +181,18 @@ onMounted(async () => {
       :ocr-error-message="store.ocrErrorMessage"
       :last-ocr-result="store.lastOcrResult"
       :copy-label="copyLabel"
+      :ai-reply="ai.reply"
+      :ai-generating="ai.generating"
+      :ai-error-message="ai.errorMessage"
+      :ai-model="ai.model"
+      :reply-copy-label="replyCopyLabel"
       @move="workspace.moveBlock"
       @resize="workspace.resizeBlock"
       @select-region="selectRegion"
       @save-hotkey="saveHotkey"
       @copy-ocr="copyOcrText"
+      @generate-reply="generateReply"
+      @copy-reply="copyReply"
       @update:ocr-text="store.ocrText = $event"
     />
 

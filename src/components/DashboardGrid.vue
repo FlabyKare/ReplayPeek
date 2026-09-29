@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { ref } from 'vue'
 import RegionSummary from '@/components/RegionSummary.vue'
 import HotkeyEditor from '@/components/HotkeyEditor.vue'
 import type { CaptureRegion, OcrResult } from '@/types/capture'
@@ -21,6 +22,11 @@ const props = defineProps<{
   ocrErrorMessage: string | null
   lastOcrResult: OcrResult | null
   copyLabel: string
+  aiReply: string
+  aiGenerating: boolean
+  aiErrorMessage: string | null
+  aiModel: string | null
+  replyCopyLabel: string
 }>()
 
 const emit = defineEmits<{
@@ -29,33 +35,109 @@ const emit = defineEmits<{
   selectRegion: []
   saveHotkey: [hotkey: string]
   copyOcr: []
+  generateReply: []
+  copyReply: []
   'update:ocrText': [value: string]
 }>()
 
-let draggedBlock: DashboardBlockId | null = null
-const heights: DashboardBlockHeight[] = ['compact', 'normal', 'tall']
+const draggedBlock = ref<DashboardBlockId | null>(null)
+const dragTarget = ref<DashboardBlockId | null>(null)
+const resizingBlock = ref<DashboardBlockId | null>(null)
 
-function startDragging(blockId: DashboardBlockId, event: DragEvent): void {
+interface ResizeSession {
+  blockId: DashboardBlockId
+  pointerId: number
+  startX: number
+  startY: number
+  startHeight: number
+  startWidth: number
+  columnWidth: number
+  lastSpan: DashboardBlockSpan
+  lastHeight: number
+}
+
+let resizeSession: ResizeSession | null = null
+
+function startDragging(blockId: DashboardBlockId, event: PointerEvent): void {
   if (!props.editing) return
-  draggedBlock = blockId
-  event.dataTransfer?.setData('text/plain', blockId)
-  if (event.dataTransfer) event.dataTransfer.effectAllowed = 'move'
+  event.preventDefault()
+  draggedBlock.value = blockId
+  dragTarget.value = null
+  ;(event.currentTarget as HTMLElement).setPointerCapture(event.pointerId)
 }
 
-function dropOn(targetId: DashboardBlockId): void {
-  if (draggedBlock) emit('move', draggedBlock, targetId)
-  draggedBlock = null
+function dragBlock(event: PointerEvent): void {
+  if (!draggedBlock.value) return
+  const target = document
+    .elementFromPoint(event.clientX, event.clientY)
+    ?.closest<HTMLElement>('[data-dashboard-block]')
+  const targetId = target?.dataset.dashboardBlock as DashboardBlockId | undefined
+  if (!targetId || targetId === draggedBlock.value || targetId === dragTarget.value) return
+  dragTarget.value = targetId
+  emit('move', draggedBlock.value, targetId)
 }
 
-function toggleSpan(block: DashboardBlockLayout): void {
-  emit('resize', block.id, block.span === 2 ? 1 : 2, block.height)
+function stopDragging(event: PointerEvent): void {
+  const target = event.currentTarget as HTMLElement
+  if (target.hasPointerCapture(event.pointerId)) target.releasePointerCapture(event.pointerId)
+  draggedBlock.value = null
+  dragTarget.value = null
 }
 
-function changeHeight(block: DashboardBlockLayout, direction: -1 | 1): void {
-  const currentIndex = heights.indexOf(block.height)
-  const nextIndex = Math.max(0, Math.min(heights.length - 1, currentIndex + direction))
-  const height = heights[nextIndex]
-  if (height) emit('resize', block.id, block.span, height)
+function minimumHeight(blockId: DashboardBlockId): number {
+  if (blockId === 'ocr') return 320
+  if (blockId === 'hotkey' || blockId === 'reply') return 220
+  return 160
+}
+
+function startResizing(block: DashboardBlockLayout, event: PointerEvent): void {
+  if (!props.editing) return
+  event.preventDefault()
+  event.stopPropagation()
+  const handle = event.currentTarget as HTMLElement
+  const blockElement = handle.closest<HTMLElement>('[data-dashboard-block]')
+  const gridElement = handle.closest<HTMLElement>('.dashboard-grid')
+  if (!blockElement || !gridElement) return
+  const blockRect = blockElement.getBoundingClientRect()
+  const gridRect = gridElement.getBoundingClientRect()
+  resizeSession = {
+    blockId: block.id,
+    pointerId: event.pointerId,
+    startX: event.clientX,
+    startY: event.clientY,
+    startHeight: block.height,
+    startWidth: blockRect.width,
+    columnWidth: (gridRect.width - 14) / 2,
+    lastSpan: block.span,
+    lastHeight: block.height,
+  }
+  resizingBlock.value = block.id
+  handle.setPointerCapture(event.pointerId)
+}
+
+function resizeBlock(event: PointerEvent): void {
+  const session = resizeSession
+  if (!session || session.pointerId !== event.pointerId) return
+  const desiredWidth = session.startWidth + event.clientX - session.startX
+  const span: DashboardBlockSpan = desiredWidth > session.columnWidth * 1.45 ? 2 : 1
+  const height =
+    Math.round(
+      Math.max(
+        minimumHeight(session.blockId),
+        Math.min(760, session.startHeight + event.clientY - session.startY),
+      ) / 8,
+    ) * 8
+  if (span === session.lastSpan && height === session.lastHeight) return
+  session.lastSpan = span
+  session.lastHeight = height
+  emit('resize', session.blockId, span, height)
+}
+
+function stopResizing(event: PointerEvent): void {
+  const handle = event.currentTarget as HTMLElement
+  if (handle.hasPointerCapture(event.pointerId)) handle.releasePointerCapture(event.pointerId)
+  resizeSession = null
+  resizingBlock.value = null
 }
 
 function updateOcrText(event: Event): void {
@@ -69,27 +151,43 @@ function updateOcrText(event: Event): void {
       v-for="block in layout"
       :key="block.id"
       class="dashboard-block"
-      :class="[`dashboard-block--span-${block.span}`, `dashboard-block--height-${block.height}`]"
-      @dragover.prevent
-      @drop="dropOn(block.id)"
+      :class="[
+        `dashboard-block--span-${block.span}`,
+        {
+          'dashboard-block--dragging': draggedBlock === block.id,
+          'dashboard-block--drop-target': dragTarget === block.id,
+          'dashboard-block--resizing': resizingBlock === block.id,
+        },
+      ]"
+      :style="{ minHeight: `${block.height}px` }"
+      :data-dashboard-block="block.id"
     >
       <div v-if="editing" class="layout-toolbar">
         <button
           class="layout-toolbar__drag"
           type="button"
-          draggable="true"
           title="Перетащить блок"
-          @dragstart="startDragging(block.id, $event)"
+          @pointerdown="startDragging(block.id, $event)"
+          @pointermove="dragBlock"
+          @pointerup="stopDragging"
+          @pointercancel="stopDragging"
         >
           ⠿
         </button>
         <span>{{ block.id }}</span>
-        <button type="button" title="Изменить ширину" @click="toggleSpan(block)">
-          {{ block.span === 2 ? '½' : '↔' }}
-        </button>
-        <button type="button" title="Уменьшить высоту" @click="changeHeight(block, -1)">−</button>
-        <button type="button" title="Увеличить высоту" @click="changeHeight(block, 1)">+</button>
       </div>
+
+      <button
+        v-if="editing"
+        class="layout-resize-handle"
+        type="button"
+        aria-label="Изменить размер блока"
+        title="Потяните, чтобы изменить размер"
+        @pointerdown="startResizing(block, $event)"
+        @pointermove="resizeBlock"
+        @pointerup="stopResizing"
+        @pointercancel="stopResizing"
+      />
 
       <article v-if="block.id === 'capture'" class="panel">
         <header class="panel__header">
@@ -114,7 +212,7 @@ function updateOcrText(event: Event): void {
         />
       </article>
 
-      <article v-else class="panel panel--ocr">
+      <article v-else-if="block.id === 'ocr'" class="panel panel--ocr">
         <header class="panel__header">
           <div>
             <span class="eyebrow">WINDOWS OCR</span>
@@ -148,6 +246,45 @@ function updateOcrText(event: Event): void {
             отправкой в AI
           </span>
           <span v-else>OCR выполняется локально, screenshot не отправляется в AI</span>
+        </footer>
+      </article>
+
+      <article v-else class="panel panel--reply">
+        <header class="panel__header">
+          <div>
+            <span class="eyebrow">AI REPLY</span>
+            <h2>Предложенный ответ</h2>
+          </div>
+          <button
+            class="ghost-button"
+            type="button"
+            :disabled="!aiReply"
+            @click="$emit('copyReply')"
+          >
+            {{ replyCopyLabel }}
+          </button>
+        </header>
+        <div class="ai-reply" :class="{ 'ai-reply--empty': !aiReply }" aria-live="polite">
+          {{
+            aiGenerating
+              ? 'Генерируем короткий ответ…'
+              : aiReply || 'Распознайте текст и нажмите «Сгенерировать ответ»'
+          }}
+        </div>
+        <button
+          class="ai-generate-button"
+          type="button"
+          :disabled="!ocrText || aiGenerating"
+          @click="$emit('generateReply')"
+        >
+          {{
+            aiGenerating ? 'Генерация…' : aiReply ? 'Сгенерировать заново' : 'Сгенерировать ответ'
+          }}
+        </button>
+        <footer class="ocr-meta">
+          <span v-if="aiErrorMessage" class="ocr-meta__error">{{ aiErrorMessage }}</span>
+          <span v-else-if="aiModel">{{ aiModel }} · в AI отправлен только OCR-текст</span>
+          <span v-else>Screenshot остаётся на устройстве</span>
         </footer>
       </article>
     </div>

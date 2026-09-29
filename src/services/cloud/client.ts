@@ -1,6 +1,7 @@
 import { openUrl } from '@tauri-apps/plugin-opener'
 import type { CloudUser, CloudWorkspace, TelegramLoginResult } from '@/types/cloud'
 import type { WorkspaceSnapshot } from '@/types/profile'
+import type { GenerateReplyRequest, GenerateReplyResponse } from '@/types/ai'
 
 const TOKEN_KEY = 'replaypeek.cloud.token.v1'
 const apiUrl = import.meta.env.VITE_SYNC_API_URL?.replace(/\/$/, '') ?? ''
@@ -117,4 +118,19 @@ export async function putCloudWorkspace(
   if (response.status === 409) throw new Error('Настройки изменились на другом устройстве')
   if (!response.ok) throw new Error(`Не удалось сохранить настройки (${response.status})`)
   return responseJson<CloudWorkspace>(response)
+}
+
+export async function generateAiReply(
+  request: GenerateReplyRequest,
+): Promise<GenerateReplyResponse> {
+  const response = await authorizedRequest('/v1/ai/reply', {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify(request),
+  })
+  if (response.status === 401) throw new Error('Войдите через Telegram в настройках')
+  if (response.status === 503) throw new Error('AI ещё не настроен на сервере')
+  if (response.status === 429) throw new Error('Слишком много запросов — попробуйте чуть позже')
+  if (!response.ok) throw new Error(`AI-сервис ответил с ошибкой ${response.status}`)
+  return responseJson<GenerateReplyResponse>(response)
 }

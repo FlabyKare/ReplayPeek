@@ -1,6 +1,7 @@
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 import type { UnlistenFn } from '@tauri-apps/api/event'
 import { useAppStore } from '@/stores/app'
+import { useAiStore } from '@/stores/ai'
 import {
   onCaptureCompleted,
   onCaptureProcessing,
@@ -11,6 +12,7 @@ import { toAppError } from '@/types/errors'
 
 export function useCaptureWorkflow() {
   const store = useAppStore()
+  const ai = useAiStore()
   const selecting = ref(false)
   const unlisteners: UnlistenFn[] = []
 
@@ -29,7 +31,13 @@ export function useCaptureWorkflow() {
     try {
       unlisteners.push(
         await onCaptureProcessing(() => store.startOcrProcessing()),
-        await onCaptureCompleted((capture) => store.acceptCapture(capture)),
+        await onCaptureCompleted((capture) => {
+          ai.clear()
+          store.acceptCapture(capture)
+          if (store.settings?.autoGenerateReply && store.ocrText) {
+            void ai.generate(store.ocrText, store.settings)
+          }
+        }),
         await onNativeError((error) => store.reportError(error.message)),
       )
     } catch (error: unknown) {

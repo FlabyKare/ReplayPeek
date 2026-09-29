@@ -9,6 +9,7 @@ import { loadConfig, type AppConfig } from './config.js'
 import { hashSecret, pkceChallenge, randomToken, secretMatches, sha256 } from './crypto.js'
 import { createPool, firstRow, inTransaction } from './db.js'
 import { TelegramOidc, type TelegramIdentity } from './telegram.js'
+import { OpenAiReplyProvider } from './ai/openai.js'
 
 const startBodySchema = z.object({ deviceName: z.string().trim().min(1).max(80).optional() })
 const pollBodySchema = z.object({
@@ -22,6 +23,11 @@ const callbackQuerySchema = z.object({
 const workspaceBodySchema = z.object({
   revision: z.number().int().nonnegative(),
   payload: z.record(z.string(), z.unknown()),
+})
+const generateReplyBodySchema = z.object({
+  message: z.string().trim().min(1).max(8_000),
+  language: z.enum(['ru', 'en']),
+  style: z.enum(['sarcastic', 'funny', 'calm', 'smart']),
 })
 
 interface UserRow {
@@ -122,6 +128,9 @@ export async function buildServer(config = loadConfig()) {
     config.telegramClientId && config.telegramClientSecret
       ? new TelegramOidc(config.telegramClientId, config.telegramClientSecret, config.publicBaseUrl)
       : null
+  const replyProvider = config.openAiApiKey
+    ? new OpenAiReplyProvider(config.openAiApiKey, config.openAiModel)
+    : null
 
   await app.register(helmet, { contentSecurityPolicy: false })
   await app.register(rateLimit, { max: 120, timeWindow: '1 minute' })
@@ -339,6 +348,26 @@ export async function buildServer(config = loadConfig()) {
       updatedAt: workspace.updated_at.toISOString(),
     }
   })
+
+  app.post(
+    '/v1/ai/reply',
+    { config: { rateLimit: { max: 12, timeWindow: '1 minute' } } },
+    async (request, reply) => {
+      if (!(await authenticate(request, pool, config))) {
+        return reply.code(401).send({ error: 'unauthorized' })
+      }
+      if (!replyProvider) {
+        return reply.code(503).send({ error: 'ai_not_configured' })
+      }
+      const body = generateReplyBodySchema.parse(request.body)
+      try {
+        return await replyProvider.generate(body)
+      } catch (error: unknown) {
+        request.log.error({ error }, 'AI reply generation failed')
+        return reply.code(502).send({ error: 'ai_provider_error' })
+      }
+    },
+  )
 
   app.setErrorHandler((error, request, reply) => {
     request.log.error({ error }, 'request failed')

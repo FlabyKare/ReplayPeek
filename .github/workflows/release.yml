@@ -38,7 +38,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'ReplayPeek v__VERSION__'
-          releaseBody: 'Добавлены вход через Telegram, синхронизация профилей и настроек через ReplayPeek Sync API на Railway, а также исправления интерфейса настроек. Обновление устанавливается только с согласия пользователя.'
+          releaseBody: 'Добавлено настоящее перетаскивание и растягивание блоков мышью, AI-ответы по OCR-тексту и выбор автоматической либо ручной генерации. Screenshot остаётся на устройстве. Обновление устанавливается только с согласия пользователя.'
           releaseDraft: false
           prerelease: false
           args: --bundles nsis

@@ -19,6 +19,7 @@ export interface AppSettings {
     toggleInteraction: string | null
   }
   replyStyle: ReplyStyle
+  autoGenerateReply: boolean
   language: AppLanguage
   overlayBounds: WindowBounds
   captureFps: number

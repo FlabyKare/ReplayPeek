@@ -1,6 +1,6 @@
 [package]
 name = "reply-overlay"
-version = "0.3.1"
+version = "0.4.0"
 description = "External Windows capture and reply overlay"
 authors = ["Reply Overlay contributors"]
 edition = "2021"

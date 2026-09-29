@@ -21,7 +21,9 @@ const emit = defineEmits<{
   selectProfile: [profileId: string]
   renameProfile: [profileId: string, name: string]
   deleteProfile: [profileId: string]
-  updatePreferences: [values: Pick<AppSettings, 'language' | 'replyStyle' | 'captureFps'>]
+  updatePreferences: [
+    values: Pick<AppSettings, 'language' | 'replyStyle' | 'captureFps' | 'autoGenerateReply'>,
+  ]
   toggleLayoutEditing: []
   resetLayout: []
   connectTelegram: []
@@ -60,6 +62,7 @@ function updateLanguage(event: Event): void {
     language: (event.target as HTMLSelectElement).value as AppLanguage,
     replyStyle: props.settings.replyStyle,
     captureFps: props.settings.captureFps,
+    autoGenerateReply: props.settings.autoGenerateReply,
   })
 }
 
@@ -69,6 +72,7 @@ function updateReplyStyle(event: Event): void {
     language: props.settings.language,
     replyStyle: (event.target as HTMLSelectElement).value as ReplyStyle,
     captureFps: props.settings.captureFps,
+    autoGenerateReply: props.settings.autoGenerateReply,
   })
 }
 
@@ -78,6 +82,17 @@ function updateCaptureFps(event: Event): void {
     language: props.settings.language,
     replyStyle: props.settings.replyStyle,
     captureFps: Number((event.target as HTMLInputElement).value),
+    autoGenerateReply: props.settings.autoGenerateReply,
+  })
+}
+
+function updateAutoGenerateReply(event: Event): void {
+  if (!props.settings) return
+  emit('updatePreferences', {
+    language: props.settings.language,
+    replyStyle: props.settings.replyStyle,
+    captureFps: props.settings.captureFps,
+    autoGenerateReply: (event.target as HTMLInputElement).checked,
   })
 }
 </script>
@@ -217,6 +232,17 @@ function updateCaptureFps(event: Event): void {
                 <option value="calm">Спокойный</option>
                 <option value="smart">Умный</option>
               </select>
+            </label>
+            <label class="settings-toggle">
+              <input
+                type="checkbox"
+                :checked="settings.autoGenerateReply"
+                @change="updateAutoGenerateReply"
+              />
+              <span>
+                <strong>Генерировать автоматически</strong>
+                <small>После каждого успешного OCR. Если выключено — только по кнопке.</small>
+              </span>
             </label>
             <label class="settings-field">
               <span>Частота мониторинга: {{ settings.captureFps }} FPS</span>

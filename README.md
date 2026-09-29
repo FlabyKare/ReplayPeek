@@ -5,24 +5,22 @@ implements a configurable global region-selection hotkey (including `Alt+Backquo
 multi-monitor/DPI-aware coordinates, screen capture, local Windows OCR, tray operation
 and persisted settings.
 
-Version 0.3 adds local profiles with independent capture/OCR preferences and dashboard
-layouts. Open Settings by clicking the ReplayPeek logo, then enable layout editing to
-reorder blocks or change their width and height.
+Version 0.4 adds cursor-based dashboard editing and AI reply generation. Open Settings
+by clicking the ReplayPeek logo, enable layout editing, then drag blocks by their dotted
+handle or resize them from the bottom-right corner. AI replies can run automatically
+after successful OCR or manually from the Reply block.
 
-OCR runs locally through the Windows 10/11 OCR engine; screenshots and recognized text
-are not sent to an external service. Install the corresponding Windows language pack if
-recognition for Russian or English is unavailable on the machine.
-
-Telegram Sync is represented by a separate authentication service boundary. To enable
-the sign-in entrypoint, copy `.env.example` to `.env` and set `VITE_TELEGRAM_AUTH_URL`
-to a public HTTPS backend that implements Telegram OIDC with PKCE and server-side token
-verification. The desktop client never embeds a Telegram client secret. Cloud profile
-storage still requires that backend and is not provided by the local-only build.
+OCR runs locally through the Windows 10/11 OCR engine. Screenshots never leave the
+device. When AI generation is requested, only the recognized text, selected language
+and reply style are sent to the ReplayPeek backend. Install the corresponding Windows
+language pack if recognition for Russian or English is unavailable on the machine.
 
 The Railway-ready sync service now lives in [`backend/`](backend/README.md). It provides
 Telegram OIDC with PKCE, hashed bearer sessions, PostgreSQL migrations, health checks and
-revision-controlled workspace synchronization. Railway deployment still needs a project,
-PostgreSQL service and BotFather OIDC credentials.
+revision-controlled workspace synchronization. It also proxies authenticated AI reply
+requests to the OpenAI Responses API, keeping `OPENAI_API_KEY` out of the desktop client.
+Railway deployment needs PostgreSQL, BotFather OIDC credentials and an OpenAI project
+API key.
 
 ## Development
 

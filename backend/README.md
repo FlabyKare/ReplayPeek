@@ -27,6 +27,8 @@ a public Railway domain, then set:
 - `TELEGRAM_CLIENT_ID` and `TELEGRAM_CLIENT_SECRET` from BotFather Login Widget settings
 - `TOKEN_PEPPER` to a random value of at least 32 characters
 - `CORS_ORIGINS=tauri://localhost,http://tauri.localhost`
+- `OPENAI_API_KEY` to a project API key stored only in Railway variables
+- `OPENAI_MODEL=gpt-6-luna` (or another Responses API text model)
 
 Set the healthcheck path to `/health`. Register
 `https://<generated-domain>/v1/auth/telegram/callback` as an Allowed URL in BotFather.

@@ -11,6 +11,8 @@ const environmentSchema = z.object({
   TOKEN_PEPPER: z.string().min(32),
   CORS_ORIGINS: z.string().default(''),
   SESSION_TTL_DAYS: z.coerce.number().int().min(1).max(365).default(30),
+  OPENAI_API_KEY: z.string().default(''),
+  OPENAI_MODEL: z.string().trim().min(1).default('gpt-6-luna'),
 })
 
 export interface AppConfig {
@@ -24,6 +26,8 @@ export interface AppConfig {
   tokenPepper: string
   corsOrigins: string[]
   sessionTtlDays: number
+  openAiApiKey: string | null
+  openAiModel: string
 }
 
 export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppConfig {
@@ -46,5 +50,7 @@ export function loadConfig(environment: NodeJS.ProcessEnv = process.env): AppCon
       .map((origin) => origin.trim())
       .filter(Boolean),
     sessionTtlDays: value.SESSION_TTL_DAYS,
+    openAiApiKey: value.OPENAI_API_KEY || null,
+    openAiModel: value.OPENAI_MODEL,
   }
 }

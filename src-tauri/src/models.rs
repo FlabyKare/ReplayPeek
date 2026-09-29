@@ -74,6 +74,8 @@ pub struct AppSettings {
     pub capture_region: Option<CaptureRegion>,
     pub hotkeys: HotkeySettings,
     pub reply_style: String,
+    #[serde(default)]
+    pub auto_generate_reply: bool,
     pub language: String,
     pub overlay_bounds: WindowBounds,
     pub capture_fps: u8,
@@ -90,6 +92,7 @@ impl Default for AppSettings {
                 toggle_interaction: None,
             },
             reply_style: "funny".into(),
+            auto_generate_reply: false,
             language: "ru".into(),
             overlay_bounds: WindowBounds {
                 x: 80,
