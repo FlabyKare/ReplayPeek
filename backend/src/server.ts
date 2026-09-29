@@ -132,7 +132,7 @@ export async function buildServer(config = loadConfig()) {
     },
   })
 
-  app.addHook('onClose', async () => pool.end())
+  app.addHook('onClose', () => pool.end())
 
   app.get('/health', () => ({ status: 'ok', service: 'replaypeek-sync-api' }))
   app.get('/ready', async (_request, reply) => {
