@@ -1,7 +1,7 @@
 {
   "$schema": "https://schema.tauri.app/config/2",
   "productName": "ReplayPeek",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "identifier": "app.reply-overlay.desktop",
   "build": {
     "beforeDevCommand": "npm run dev",
@@ -24,7 +24,7 @@
       }
     ],
     "security": {
-      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost"
+      "csp": "default-src 'self'; img-src 'self' asset: http://asset.localhost data: https:; style-src 'self' 'unsafe-inline'; connect-src ipc: http://ipc.localhost https://replaypeek-sync-api-production.up.railway.app"
     }
   },
   "bundle": {

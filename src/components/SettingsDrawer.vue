@@ -1,8 +1,8 @@
 <script setup lang="ts">
 import { computed, ref, watch } from 'vue'
 import type { UserProfile } from '@/types/profile'
+import type { CloudUser } from '@/types/cloud'
 import type { AppLanguage, AppSettings, ReplyStyle } from '@/types/settings'
-import { startTelegramAuth } from '@/services/auth/telegram'
 
 const props = defineProps<{
   open: boolean
@@ -10,6 +10,9 @@ const props = defineProps<{
   activeProfileId: string
   settings: AppSettings | null
   layoutEditing: boolean
+  cloudUser: CloudUser | null
+  cloudBusy: boolean
+  cloudMessage: string | null
 }>()
 
 const emit = defineEmits<{
@@ -21,11 +24,13 @@ const emit = defineEmits<{
   updatePreferences: [values: Pick<AppSettings, 'language' | 'replyStyle' | 'captureFps'>]
   toggleLayoutEditing: []
   resetLayout: []
+  connectTelegram: []
+  disconnectTelegram: []
+  syncCloud: []
 }>()
 
 const newProfileName = ref('')
 const profileNameDraft = ref('')
-const telegramMessage = ref<string | null>(null)
 
 const activeProfile = computed(
   () => props.profiles.find((profile) => profile.id === props.activeProfileId) ?? null,
@@ -74,10 +79,6 @@ function updateCaptureFps(event: Event): void {
     replyStyle: props.settings.replyStyle,
     captureFps: Number((event.target as HTMLInputElement).value),
   })
-}
-
-async function connectTelegram(): Promise<void> {
-  telegramMessage.value = (await startTelegramAuth()).message
 }
 </script>
 
@@ -155,14 +156,44 @@ async function connectTelegram(): Promise<void> {
           <section class="settings-section telegram-card">
             <div class="telegram-card__icon">➤</div>
             <div>
-              <strong>Telegram Sync</strong>
+              <strong>{{ cloudUser ? cloudUser.displayName : 'Telegram Sync' }}</strong>
               <p>
-                Вход или регистрация через Telegram для синхронизации профилей между устройствами.
+                {{
+                  cloudUser
+                    ? cloudUser.username
+                      ? `@${cloudUser.username} · профиль синхронизируется`
+                      : 'Профиль подключён и синхронизируется'
+                    : 'Вход или регистрация через Telegram для синхронизации профилей между устройствами.'
+                }}
               </p>
-              <button class="telegram-button" type="button" @click="connectTelegram">
-                Войти через Telegram
+              <button
+                v-if="!cloudUser"
+                class="telegram-button"
+                type="button"
+                :disabled="cloudBusy"
+                @click="$emit('connectTelegram')"
+              >
+                {{ cloudBusy ? 'Ожидаем Telegram…' : 'Войти через Telegram' }}
               </button>
-              <small v-if="telegramMessage">{{ telegramMessage }}</small>
+              <div v-else class="telegram-card__actions">
+                <button
+                  class="telegram-button"
+                  type="button"
+                  :disabled="cloudBusy"
+                  @click="$emit('syncCloud')"
+                >
+                  Синхронизировать
+                </button>
+                <button
+                  class="ghost-button"
+                  type="button"
+                  :disabled="cloudBusy"
+                  @click="$emit('disconnectTelegram')"
+                >
+                  Выйти
+                </button>
+              </div>
+              <small v-if="cloudMessage">{{ cloudMessage }}</small>
             </div>
           </section>
 

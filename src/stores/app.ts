@@ -117,6 +117,17 @@ export const useAppStore = defineStore('app', () => {
     }
   }
 
+  async function applyActiveProfileSettings(): Promise<void> {
+    const profileSettings = workspace.activeProfile?.settings
+    if (!profileSettings) return
+    try {
+      settings.value = await persistSettings(profileSettings)
+      runtimeStatus.value = await getRuntimeStatus()
+    } catch (error: unknown) {
+      reportError(toAppError(error).message)
+    }
+  }
+
   return {
     settings,
     lastCapture,
@@ -138,5 +149,6 @@ export const useAppStore = defineStore('app', () => {
     updateCaptureHotkey,
     switchProfile,
     updatePreferences,
+    applyActiveProfileSettings,
   }
 })

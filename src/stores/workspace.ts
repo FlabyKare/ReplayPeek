@@ -6,7 +6,9 @@ import {
   type DashboardBlockHeight,
   type DashboardBlockId,
   type DashboardBlockSpan,
+  type TelegramIdentity,
   type UserProfile,
+  type WorkspaceSnapshot,
 } from '@/types/profile'
 
 const STORAGE_KEY = 'replaypeek.workspace.v1'
@@ -15,6 +17,8 @@ interface PersistedWorkspace {
   activeProfileId: string
   profiles: UserProfile[]
 }
+
+export type ReturnTypeUseWorkspaceStore = ReturnType<typeof useWorkspaceStore>
 
 function clone<T>(value: T): T {
   return JSON.parse(JSON.stringify(value)) as T
@@ -165,6 +169,42 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     persist()
   }
 
+  function snapshot(): WorkspaceSnapshot {
+    return clone({ activeProfileId: activeProfileId.value, profiles: profiles.value })
+  }
+
+  function restoreSnapshot(value: Record<string, unknown>): boolean {
+    const candidate = value as Partial<WorkspaceSnapshot>
+    if (
+      typeof candidate.activeProfileId !== 'string' ||
+      !Array.isArray(candidate.profiles) ||
+      candidate.profiles.length === 0 ||
+      !candidate.profiles.every(
+        (profile) =>
+          profile &&
+          typeof profile.id === 'string' &&
+          typeof profile.name === 'string' &&
+          profile.settings &&
+          Array.isArray(profile.dashboardLayout),
+      ) ||
+      !candidate.profiles.some((profile) => profile.id === candidate.activeProfileId)
+    ) {
+      return false
+    }
+    profiles.value = clone(candidate.profiles)
+    activeProfileId.value = candidate.activeProfileId
+    persist()
+    return true
+  }
+
+  function linkTelegram(identity: TelegramIdentity): void {
+    const profile = activeProfile.value
+    if (!profile) return
+    profile.telegram = clone(identity)
+    profile.updatedAt = new Date().toISOString()
+    persist()
+  }
+
   return {
     profiles,
     activeProfileId,
@@ -180,5 +220,8 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     moveBlock,
     resizeBlock,
     resetLayout,
+    snapshot,
+    restoreSnapshot,
+    linkTelegram,
   }
 })

@@ -27,6 +27,11 @@ export interface UserProfile {
   updatedAt: string
 }
 
+export interface WorkspaceSnapshot {
+  activeProfileId: string
+  profiles: UserProfile[]
+}
+
 export const DEFAULT_DASHBOARD_LAYOUT: DashboardBlockLayout[] = [
   { id: 'capture', span: 2, height: 'compact' },
   { id: 'hotkey', span: 1, height: 'normal' },

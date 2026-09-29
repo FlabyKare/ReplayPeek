@@ -4,6 +4,7 @@ import UpdatePrompt from '@/components/UpdatePrompt.vue'
 import DashboardGrid from '@/components/DashboardGrid.vue'
 import SettingsDrawer from '@/components/SettingsDrawer.vue'
 import { useAppStore } from '@/stores/app'
+import { useCloudStore } from '@/stores/cloud'
 import { useWorkspaceStore } from '@/stores/workspace'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
 import { toAppError } from '@/types/errors'
@@ -11,6 +12,7 @@ import { formatHotkeyLabel } from '@/utils/hotkey'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
 
 const store = useAppStore()
+const cloud = useCloudStore()
 const workspace = useWorkspaceStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
 const {
@@ -38,6 +40,15 @@ function toggleLayoutEditing(): void {
   settingsOpen.value = false
 }
 
+async function connectTelegram(): Promise<void> {
+  const restored = await cloud.connect(workspace)
+  if (restored) await store.applyActiveProfileSettings()
+}
+
+async function syncCloudNow(): Promise<void> {
+  await cloud.upload(workspace.snapshot())
+}
+
 async function copyOcrText(): Promise<void> {
   if (!store.ocrText) return
   try {
@@ -55,6 +66,14 @@ async function copyOcrText(): Promise<void> {
 onMounted(async () => {
   try {
     await store.initialize()
+    const restored = await cloud.initialize(workspace)
+    if (restored) await store.applyActiveProfileSettings()
+    workspace.$subscribe(
+      () => {
+        cloud.scheduleUpload(workspace.snapshot())
+      },
+      { detached: true },
+    )
   } catch (error: unknown) {
     store.reportError(toAppError(error).message)
   }
@@ -154,6 +173,9 @@ onMounted(async () => {
       :active-profile-id="workspace.activeProfileId"
       :settings="store.settings"
       :layout-editing="workspace.layoutEditing"
+      :cloud-user="cloud.user"
+      :cloud-busy="cloud.busy"
+      :cloud-message="cloud.message"
       @close="settingsOpen = false"
       @create-profile="createProfile"
       @select-profile="store.switchProfile"
@@ -162,6 +184,9 @@ onMounted(async () => {
       @update-preferences="store.updatePreferences"
       @toggle-layout-editing="toggleLayoutEditing"
       @reset-layout="workspace.resetLayout"
+      @connect-telegram="connectTelegram"
+      @disconnect-telegram="cloud.disconnect"
+      @sync-cloud="syncCloudNow"
     />
 
     <UpdatePrompt

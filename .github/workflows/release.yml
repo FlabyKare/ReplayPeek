@@ -38,7 +38,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'ReplayPeek v__VERSION__'
-          releaseBody: 'Добавлены настройки, локальные профили с отдельными параметрами, редактируемая раскладка блоков и подготовка Telegram Sync. Обновление устанавливается только с согласия пользователя.'
+          releaseBody: 'Добавлены вход через Telegram, синхронизация профилей и настроек через ReplayPeek Sync API на Railway, а также исправления интерфейса настроек. Обновление устанавливается только с согласия пользователя.'
           releaseDraft: false
           prerelease: false
           args: --bundles nsis
