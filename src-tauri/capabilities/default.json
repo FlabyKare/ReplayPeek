@@ -3,5 +3,10 @@
   "identifier": "desktop-capability",
   "description": "Core permissions for main and selection overlay windows",
   "windows": ["main", "selection-*"],
-  "permissions": ["core:default", "core:event:allow-listen", "core:event:allow-unlisten"]
+  "permissions": [
+    "core:default",
+    "core:event:allow-listen",
+    "core:event:allow-unlisten",
+    "opener:default"
+  ]
 }

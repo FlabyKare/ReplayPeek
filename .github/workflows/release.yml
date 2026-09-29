@@ -38,7 +38,7 @@ jobs:
         with:
           tagName: v__VERSION__
           releaseName: 'ReplayPeek v__VERSION__'
-          releaseBody: 'Обновления ReplayPeek теперь устанавливаются только с согласия пользователя: «Обновить сейчас» или «Остаться на текущей версии».'
+          releaseBody: 'Добавлены настройки, локальные профили с отдельными параметрами, редактируемая раскладка блоков и подготовка Telegram Sync. Обновление устанавливается только с согласия пользователя.'
           releaseDraft: false
           prerelease: false
           args: --bundles nsis

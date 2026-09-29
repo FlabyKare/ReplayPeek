@@ -1,15 +1,17 @@
 <script setup lang="ts">
 import { onMounted, ref } from 'vue'
-import RegionSummary from '@/components/RegionSummary.vue'
-import HotkeyEditor from '@/components/HotkeyEditor.vue'
 import UpdatePrompt from '@/components/UpdatePrompt.vue'
+import DashboardGrid from '@/components/DashboardGrid.vue'
+import SettingsDrawer from '@/components/SettingsDrawer.vue'
 import { useAppStore } from '@/stores/app'
+import { useWorkspaceStore } from '@/stores/workspace'
 import { useCaptureWorkflow } from '@/composables/useCaptureWorkflow'
 import { toAppError } from '@/types/errors'
 import { formatHotkeyLabel } from '@/utils/hotkey'
 import { useAutoUpdater } from '@/composables/useAutoUpdater'
 
 const store = useAppStore()
+const workspace = useWorkspaceStore()
 const { selecting, selectRegion } = useCaptureWorkflow()
 const {
   checking: updateChecking,
@@ -19,9 +21,21 @@ const {
   showUpdate,
 } = useAutoUpdater()
 const copyLabel = ref('Копировать')
+const settingsOpen = ref(false)
 
 function saveHotkey(hotkey: string): void {
   void store.updateCaptureHotkey(hotkey)
+}
+
+function createProfile(name: string): void {
+  if (!store.settings) return
+  const profileId = workspace.createProfile(name, store.settings)
+  void store.switchProfile(profileId)
+}
+
+function toggleLayoutEditing(): void {
+  workspace.layoutEditing = !workspace.layoutEditing
+  settingsOpen.value = false
 }
 
 async function copyOcrText(): Promise<void> {
@@ -50,13 +64,13 @@ onMounted(async () => {
 <template>
   <main class="app-shell">
     <header class="topbar">
-      <div class="brand">
+      <button class="brand" type="button" title="Открыть настройки" @click="settingsOpen = true">
         <span class="brand__mark">R</span>
         <div>
           <strong>ReplayPeek</strong>
           <span>gaming reply utility</span>
         </div>
-      </div>
+      </button>
       <div class="topbar__actions">
         <button
           class="update-status"
@@ -108,71 +122,47 @@ onMounted(async () => {
       <strong>Не удалось выполнить операцию.</strong> {{ store.errorMessage }}
     </p>
 
-    <section class="dashboard-grid">
-      <article class="panel panel--wide">
-        <header class="panel__header">
-          <div>
-            <span class="eyebrow">ACTIVE AREA</span>
-            <h2>Область захвата</h2>
-          </div>
-          <button class="ghost-button" type="button" @click="selectRegion">Изменить</button>
-        </header>
-        <RegionSummary :region="store.captureRegion" />
-      </article>
+    <div v-if="workspace.layoutEditing" class="layout-edit-banner">
+      <span>Перетаскивайте блоки за ⠿ и меняйте их размер кнопками.</span>
+      <button class="ghost-button" type="button" @click="workspace.layoutEditing = false">
+        Готово
+      </button>
+    </div>
 
-      <article class="panel">
-        <span class="eyebrow">HOTKEY</span>
-        <h2>Глобальная клавиша</h2>
-        <HotkeyEditor
-          :model-value="store.settings?.hotkeys.captureRegion ?? 'Ctrl+Shift+S'"
-          :saving="store.hotkeySaving"
-          @save="saveHotkey"
-        />
-      </article>
+    <DashboardGrid
+      :layout="workspace.dashboardLayout"
+      :editing="workspace.layoutEditing"
+      :capture-region="store.captureRegion"
+      :settings="store.settings"
+      :hotkey-saving="store.hotkeySaving"
+      :ocr-text="store.ocrText"
+      :ocr-processing="store.ocrProcessing"
+      :ocr-error-message="store.ocrErrorMessage"
+      :last-ocr-result="store.lastOcrResult"
+      :copy-label="copyLabel"
+      @move="workspace.moveBlock"
+      @resize="workspace.resizeBlock"
+      @select-region="selectRegion"
+      @save-hotkey="saveHotkey"
+      @copy-ocr="copyOcrText"
+      @update:ocr-text="store.ocrText = $event"
+    />
 
-      <article class="panel panel--ocr">
-        <header class="panel__header">
-          <div>
-            <span class="eyebrow">WINDOWS OCR</span>
-            <h2>Распознанный текст</h2>
-          </div>
-          <button
-            class="ghost-button"
-            type="button"
-            :disabled="!store.ocrText"
-            @click="copyOcrText"
-          >
-            {{ copyLabel }}
-          </button>
-        </header>
-        <textarea
-          v-model="store.ocrText"
-          class="ocr-editor"
-          spellcheck="false"
-          :aria-busy="store.ocrProcessing"
-          :placeholder="
-            store.ocrProcessing
-              ? 'Распознаём текст…'
-              : 'После выделения области здесь появится распознанный текст'
-          "
-          rows="12"
-        />
-        <footer class="ocr-meta">
-          <span v-if="store.ocrProcessing" class="ocr-meta__processing">
-            <i />
-            OCR работает в фоне — окно уже можно использовать
-          </span>
-          <span v-else-if="store.ocrErrorMessage" class="ocr-meta__error">
-            {{ store.ocrErrorMessage }}
-          </span>
-          <span v-else-if="store.lastOcrResult">
-            {{ store.lastOcrResult.language }} · {{ store.lastOcrResult.durationMs }} ms · можно
-            исправить перед отправкой в AI
-          </span>
-          <span v-else>OCR выполняется локально, screenshot не отправляется в AI</span>
-        </footer>
-      </article>
-    </section>
+    <SettingsDrawer
+      :open="settingsOpen"
+      :profiles="workspace.profiles"
+      :active-profile-id="workspace.activeProfileId"
+      :settings="store.settings"
+      :layout-editing="workspace.layoutEditing"
+      @close="settingsOpen = false"
+      @create-profile="createProfile"
+      @select-profile="store.switchProfile"
+      @rename-profile="workspace.renameProfile"
+      @delete-profile="workspace.deleteProfile"
+      @update-preferences="store.updatePreferences"
+      @toggle-layout-editing="toggleLayoutEditing"
+      @reset-layout="workspace.resetLayout"
+    />
 
     <UpdatePrompt
       v-if="updatePromptVisible && store.updateStatus"
