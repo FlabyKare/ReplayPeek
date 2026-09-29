@@ -73,6 +73,10 @@ function successPage(): string {
   return `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ReplayPeek</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090b12;color:#f8fafc;font:16px system-ui}.card{max-width:480px;padding:32px;border:1px solid #283047;border-radius:18px;background:#121622;text-align:center}h1{margin-top:0;color:#a78bfa}p{color:#a8b0c4;line-height:1.6}</style><main class="card"><h1>ReplayPeek подключён</h1><p>Авторизация Telegram завершена. Вернитесь в приложение — профиль синхронизируется автоматически.</p></main></html>`
 }
 
+function failurePage(): string {
+  return `<!doctype html><html lang="ru"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>ReplayPeek</title><style>body{margin:0;min-height:100vh;display:grid;place-items:center;background:#090b12;color:#f8fafc;font:16px system-ui}.card{max-width:480px;padding:32px;border:1px solid #472832;border-radius:18px;background:#121622;text-align:center}h1{margin-top:0;color:#fb7185}p{color:#a8b0c4;line-height:1.6}</style><main class="card"><h1>Не удалось подключить ReplayPeek</h1><p>Вернитесь в приложение и повторите вход через Telegram. Если ошибка повторится, сообщите разработчику.</p></main></html>`
+}
+
 async function upsertUser(client: PoolClient, identity: TelegramIdentity): Promise<UserRow> {
   const result = await client.query<UserRow>(
     `INSERT INTO users (id, telegram_sub, telegram_id, display_name, username, avatar_url)
@@ -199,7 +203,18 @@ export async function buildServer(config = loadConfig()) {
       return reply.code(400).type('text/plain').send('Authorization attempt is invalid or expired.')
     }
 
-    const identity = await telegram.exchangeAndVerify(query.code, attempt.code_verifier)
+    let identity: TelegramIdentity
+    try {
+      identity = await telegram.exchangeAndVerify(query.code, attempt.code_verifier)
+    } catch (error) {
+      request.log.error({ err: error, attemptId: attempt.id }, 'Telegram token exchange failed')
+      await pool.query(
+        `UPDATE auth_attempts SET status = 'consumed'
+          WHERE id = $1 AND status = 'pending'`,
+        [attempt.id],
+      )
+      return reply.code(502).type('text/html; charset=utf-8').send(failurePage())
+    }
     await inTransaction(pool, async (client) => {
       const claimed = await client.query<{ id: string }>(
         `SELECT id FROM auth_attempts

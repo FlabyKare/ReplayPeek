@@ -5,7 +5,14 @@ const TELEGRAM_AUTH_URL = `${TELEGRAM_ISSUER}/auth`
 const TELEGRAM_TOKEN_URL = `${TELEGRAM_ISSUER}/token`
 const TELEGRAM_JWKS = createRemoteJWKSet(new URL(`${TELEGRAM_ISSUER}/.well-known/jwks.json`))
 
-const tokenResponseSchema = z.object({ id_token: z.string().min(1) })
+const tokenResponseSchema = z
+  .object({
+    id_token: z.string().min(1).optional(),
+    access_token: z.string().min(1).optional(),
+    error: z.string().min(1).optional(),
+    error_description: z.string().min(1).optional(),
+  })
+  .passthrough()
 const telegramClaimsSchema = z.object({
   sub: z.string().min(1),
   id: z.union([z.number().int(), z.string()]).optional(),
@@ -20,6 +27,36 @@ export interface TelegramIdentity {
   displayName: string
   username: string | null
   avatarUrl: string | null
+}
+
+function responseFieldNames(value: unknown): string {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return 'none'
+  const fields = Object.keys(value).sort()
+  return fields.length > 0 ? fields.join(', ') : 'none'
+}
+
+function isJwt(value: string): boolean {
+  return value.split('.').length === 3
+}
+
+export function selectTelegramIdentityToken(value: unknown): string {
+  const response = tokenResponseSchema.parse(value)
+  if (response.error) {
+    const description = response.error_description
+      ? `: ${response.error_description.slice(0, 240)}`
+      : ''
+    throw new Error(`Telegram token exchange returned ${response.error}${description}`)
+  }
+  if (response.id_token) return response.id_token
+
+  // Telegram normally returns id_token. Some successful responses currently expose
+  // the same signed JWT as access_token, so accept it only through normal JWT
+  // signature and claims verification below. Opaque bearer tokens are rejected.
+  if (response.access_token && isJwt(response.access_token)) return response.access_token
+
+  throw new Error(
+    `Telegram token response has no signed identity token (fields: ${responseFieldNames(value)})`,
+  )
 }
 
 export class TelegramOidc {
@@ -66,11 +103,11 @@ export class TelegramOidc {
       throw new Error(`Telegram token exchange failed with status ${response.status}`)
     }
 
-    const tokenResponse = tokenResponseSchema.parse(await response.json())
-    const verified = await jwtVerify(tokenResponse.id_token, TELEGRAM_JWKS, {
+    const identityToken = selectTelegramIdentityToken(await response.json())
+    const verified = await jwtVerify(identityToken, TELEGRAM_JWKS, {
       issuer: TELEGRAM_ISSUER,
       audience: this.clientId,
-      algorithms: ['RS256'],
+      algorithms: ['RS256', 'ES256', 'EdDSA', 'ES256K'],
     })
     const claims = telegramClaimsSchema.parse(verified.payload)
     return {
