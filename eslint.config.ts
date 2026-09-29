@@ -3,7 +3,7 @@ import { defineConfigWithVueTs, vueTsConfigs } from '@vue/eslint-config-typescri
 import skipFormatting from '@vue/eslint-config-prettier/skip-formatting'
 
 export default defineConfigWithVueTs(
-  { ignores: ['dist/**', 'src-tauri/target/**', 'src-tauri/gen/**'] },
+  { ignores: ['dist/**', 'backend/dist/**', 'src-tauri/target/**', 'src-tauri/gen/**'] },
   pluginVue.configs['flat/essential'],
   vueTsConfigs.recommendedTypeChecked,
   skipFormatting,

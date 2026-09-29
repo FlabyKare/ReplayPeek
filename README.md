@@ -19,6 +19,11 @@ to a public HTTPS backend that implements Telegram OIDC with PKCE and server-sid
 verification. The desktop client never embeds a Telegram client secret. Cloud profile
 storage still requires that backend and is not provided by the local-only build.
 
+The Railway-ready sync service now lives in [`backend/`](backend/README.md). It provides
+Telegram OIDC with PKCE, hashed bearer sessions, PostgreSQL migrations, health checks and
+revision-controlled workspace synchronization. Railway deployment still needs a project,
+PostgreSQL service and BotFather OIDC credentials.
+
 ## Development
 
 Prerequisites: Node.js 20+, Rust stable (MSVC), Microsoft C++ Build Tools and WebView2.
