@@ -383,53 +383,73 @@ button {
 }
 
 .dashboard-grid {
-  display: grid;
-  grid-template-columns: repeat(2, minmax(0, 1fr));
-  gap: 14px;
+  position: relative;
+  min-height: 170px;
+  transition: height 0.18s ease;
 }
 
 .dashboard-grid--editing {
-  padding: 12px;
   border: 1px dashed rgba($accent, 0.45);
   border-radius: 18px;
   background: rgba($accent, 0.035);
 }
 
 .dashboard-block {
-  position: relative;
+  position: absolute;
   min-width: 0;
   transition:
     opacity 0.16s ease,
-    transform 0.16s ease,
-    filter 0.16s ease;
-
-  &--span-1 {
-    grid-column: span 1;
-  }
-
-  &--span-2 {
-    grid-column: span 2;
-  }
+    filter 0.16s ease,
+    box-shadow 0.16s ease;
 
   > .panel {
     height: 100%;
+    overflow: hidden;
   }
 
-  &--dragging {
-    z-index: 5;
-    opacity: 0.72;
-    transform: scale(0.99);
+  &--interacting {
+    z-index: 10;
     filter: saturate(1.2);
   }
 
-  &--drop-target > .panel {
-    border-color: rgba($accent-2, 0.7);
-    box-shadow: 0 0 0 3px rgba($accent-2, 0.09);
+  &--moving {
+    opacity: 0.9;
+    filter: saturate(1.2) drop-shadow(0 18px 28px rgba(0, 0, 0, 0.3));
   }
 
   &--resizing > .panel {
     border-color: rgba($accent, 0.72);
   }
+}
+
+.dashboard-grid--editing .dashboard-block {
+  will-change: left, top, width, height;
+  transition:
+    top 0.12s ease,
+    left 0.12s ease,
+    width 0.12s ease,
+    height 0.12s ease,
+    opacity 0.16s ease,
+    filter 0.16s ease;
+
+  &::after {
+    position: absolute;
+    z-index: 2;
+    inset: 0;
+    border: 1px dashed rgba($accent, 0.42);
+    border-radius: 15px;
+    pointer-events: none;
+    content: '';
+  }
+}
+
+.dashboard-grid--editing .dashboard-block--interacting {
+  transition: none;
+}
+
+.layout-interacting,
+.layout-interacting * {
+  user-select: none !important;
 }
 
 .layout-toolbar {
@@ -454,6 +474,17 @@ button {
     text-transform: uppercase;
   }
 
+  output {
+    padding-inline: 5px;
+    color: rgba($accent-2, 0.78);
+    font:
+      700 9px/1 ui-monospace,
+      SFMono-Regular,
+      Consolas,
+      monospace;
+    white-space: nowrap;
+  }
+
   button {
     width: 25px;
     height: 25px;
@@ -476,34 +507,110 @@ button {
 
 .layout-resize-handle {
   position: absolute;
-  z-index: 5;
-  right: 7px;
-  bottom: 7px;
-  width: 23px;
-  height: 23px;
+  z-index: 6;
   border: 0;
   background: transparent;
-  cursor: nwse-resize;
   touch-action: none;
 
-  &::before,
-  &::after {
-    position: absolute;
-    right: 2px;
-    bottom: 2px;
-    border-right: 2px solid rgba($accent-2, 0.85);
-    border-bottom: 2px solid rgba($accent-2, 0.85);
-    content: '';
+  &:hover {
+    background: rgba($accent-2, 0.1);
   }
 
-  &::before {
-    width: 14px;
-    height: 14px;
+  &--n,
+  &--s {
+    right: 18px;
+    left: 18px;
+    height: 10px;
+    cursor: ns-resize;
   }
 
-  &::after {
-    width: 7px;
-    height: 7px;
+  &--n {
+    top: -4px;
+  }
+
+  &--s {
+    bottom: -4px;
+  }
+
+  &--e,
+  &--w {
+    top: 18px;
+    bottom: 18px;
+    width: 10px;
+    cursor: ew-resize;
+  }
+
+  &--e {
+    right: -4px;
+  }
+
+  &--w {
+    left: -4px;
+  }
+
+  &--ne,
+  &--nw,
+  &--se,
+  &--sw {
+    width: 22px;
+    height: 22px;
+
+    &::after {
+      position: absolute;
+      width: 9px;
+      height: 9px;
+      border-color: rgba($accent-2, 0.9);
+      border-style: solid;
+      content: '';
+    }
+  }
+
+  &--ne {
+    top: -5px;
+    right: -5px;
+    cursor: nesw-resize;
+
+    &::after {
+      top: 5px;
+      right: 5px;
+      border-width: 2px 2px 0 0;
+    }
+  }
+
+  &--nw {
+    top: -5px;
+    left: -5px;
+    cursor: nwse-resize;
+
+    &::after {
+      top: 5px;
+      left: 5px;
+      border-width: 2px 0 0 2px;
+    }
+  }
+
+  &--se {
+    right: -5px;
+    bottom: -5px;
+    cursor: nwse-resize;
+
+    &::after {
+      right: 5px;
+      bottom: 5px;
+      border-width: 0 2px 2px 0;
+    }
+  }
+
+  &--sw {
+    bottom: -5px;
+    left: -5px;
+    cursor: nesw-resize;
+
+    &::after {
+      bottom: 5px;
+      left: 5px;
+      border-width: 0 0 2px 2px;
+    }
   }
 }
 
@@ -1200,14 +1307,21 @@ button {
     padding-inline: 20px;
   }
 
-  .hero-panel,
-  .dashboard-grid {
+  .hero-panel {
     grid-template-columns: 1fr;
   }
 
-  .dashboard-block--span-1,
-  .dashboard-block--span-2 {
-    grid-column: span 1;
+  .dashboard-grid {
+    display: grid;
+    height: auto !important;
+    gap: 14px;
+  }
+
+  .dashboard-block {
+    position: relative;
+    top: auto !important;
+    left: auto !important;
+    width: 100% !important;
   }
 
   .hero-panel {
@@ -1223,6 +1337,10 @@ button {
   }
 
   .layout-toolbar span {
+    display: none;
+  }
+
+  .layout-toolbar output {
     display: none;
   }
 }

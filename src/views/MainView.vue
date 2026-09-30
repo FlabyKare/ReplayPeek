@@ -164,7 +164,7 @@ onMounted(async () => {
     </p>
 
     <div v-if="workspace.layoutEditing" class="layout-edit-banner">
-      <span>Перетаскивайте блоки за ⠿ и тяните угол снизу справа для изменения размера.</span>
+      <span>Перетаскивайте блоки за ⠿ и меняйте размер за любой край или угол.</span>
       <button class="ghost-button" type="button" @click="workspace.layoutEditing = false">
         Готово
       </button>
@@ -186,8 +186,7 @@ onMounted(async () => {
       :ai-error-message="ai.errorMessage"
       :ai-model="ai.model"
       :reply-copy-label="replyCopyLabel"
-      @move="workspace.moveBlock"
-      @resize="workspace.resizeBlock"
+      @update-layout="workspace.updateDashboardLayout"
       @select-region="selectRegion"
       @save-hotkey="saveHotkey"
       @copy-ocr="copyOcrText"

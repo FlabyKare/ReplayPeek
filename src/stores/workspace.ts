@@ -3,9 +3,7 @@ import { defineStore } from 'pinia'
 import type { AppSettings } from '@/types/settings'
 import {
   DEFAULT_DASHBOARD_LAYOUT,
-  type DashboardBlockHeight,
-  type DashboardBlockId,
-  type DashboardBlockSpan,
+  type DashboardBlockLayout,
   type TelegramIdentity,
   type UserProfile,
   type WorkspaceSnapshot,
@@ -45,25 +43,73 @@ const legacyHeights: Record<string, number> = {
 
 function normalizeLayout(value: unknown): UserProfile['dashboardLayout'] {
   const source = Array.isArray(value) ? value : []
-  const result: UserProfile['dashboardLayout'] = []
+  const parsed: Array<
+    Omit<DashboardBlockLayout, 'x' | 'y' | 'width'> &
+      Partial<Pick<DashboardBlockLayout, 'x' | 'y' | 'width'>>
+  > = []
 
   for (const item of source) {
     if (!item || typeof item !== 'object') continue
     const candidate = item as Record<string, unknown>
     const fallback = DEFAULT_DASHBOARD_LAYOUT.find((block) => block.id === candidate.id)
-    if (!fallback || result.some((block) => block.id === fallback.id)) continue
+    if (!fallback || parsed.some((block) => block.id === fallback.id)) continue
     const legacyHeight =
       typeof candidate.height === 'string' ? legacyHeights[candidate.height] : null
     const height = typeof candidate.height === 'number' ? candidate.height : legacyHeight
-    result.push({
+    parsed.push({
       id: fallback.id,
       span: candidate.span === 1 ? 1 : 2,
-      height: Math.round(Math.max(150, Math.min(760, height ?? fallback.height))),
+      height: Math.round(Math.max(150, Math.min(1200, height ?? fallback.height))),
+      x: typeof candidate.x === 'number' ? candidate.x : undefined,
+      y: typeof candidate.y === 'number' ? candidate.y : undefined,
+      width: typeof candidate.width === 'number' ? candidate.width : undefined,
     })
   }
 
   for (const block of DEFAULT_DASHBOARD_LAYOUT) {
-    if (!result.some((item) => item.id === block.id)) result.push(clone(block))
+    if (!parsed.some((item) => item.id === block.id)) parsed.push(clone(block))
+  }
+
+  const hasCompleteGeometry = parsed.every(
+    (block) => Number.isFinite(block.x) && Number.isFinite(block.y) && Number.isFinite(block.width),
+  )
+  if (hasCompleteGeometry) {
+    return parsed.map((block) => {
+      const width = Math.round(Math.max(180, Math.min(1000, block.width ?? 1000)))
+      return {
+        id: block.id,
+        x: Math.round(Math.max(0, Math.min(1000 - width, block.x ?? 0))),
+        y: Math.round(Math.max(0, Math.min(5000, block.y ?? 0))),
+        width,
+        span: width >= 750 ? 2 : 1,
+        height: Math.round(Math.max(150, Math.min(1200, block.height))),
+      }
+    })
+  }
+
+  // Migrate the former two-column flow layout without resetting users' order
+  // or their already selected block heights.
+  const result: DashboardBlockLayout[] = []
+  let rowY = 0
+  let pendingHalf: { index: number; height: number } | null = null
+  for (const block of parsed) {
+    if (block.span === 2) {
+      if (pendingHalf) {
+        rowY += pendingHalf.height + 14
+        pendingHalf = null
+      }
+      result.push({ ...block, x: 0, y: rowY, width: 1000 })
+      rowY += block.height + 14
+      continue
+    }
+    if (!pendingHalf) {
+      result.push({ ...block, x: 0, y: rowY, width: 493 })
+      pendingHalf = { index: result.length - 1, height: block.height }
+      continue
+    }
+    result.push({ ...block, x: 507, y: rowY, width: 493 })
+    rowY += Math.max(pendingHalf.height, block.height) + 14
+    pendingHalf = null
   }
   return result
 }
@@ -190,27 +236,11 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     return activeProfileId.value
   }
 
-  function moveBlock(sourceId: DashboardBlockId, targetId: DashboardBlockId): void {
-    const layout = activeProfile.value?.dashboardLayout
-    if (!layout || sourceId === targetId) return
-    const sourceIndex = layout.findIndex((item) => item.id === sourceId)
-    const targetIndex = layout.findIndex((item) => item.id === targetId)
-    if (sourceIndex < 0 || targetIndex < 0) return
-    const [source] = layout.splice(sourceIndex, 1)
-    if (!source) return
-    layout.splice(targetIndex, 0, source)
-    persist()
-  }
-
-  function resizeBlock(
-    blockId: DashboardBlockId,
-    span: DashboardBlockSpan,
-    height: DashboardBlockHeight,
-  ): void {
-    const block = activeProfile.value?.dashboardLayout.find((item) => item.id === blockId)
-    if (!block) return
-    block.span = span
-    block.height = Math.round(Math.max(150, Math.min(760, height)))
+  function updateDashboardLayout(layout: DashboardBlockLayout[]): void {
+    const profile = activeProfile.value
+    if (!profile) return
+    profile.dashboardLayout = normalizeLayout(layout)
+    profile.updatedAt = new Date().toISOString()
     persist()
   }
 
@@ -270,8 +300,7 @@ export const useWorkspaceStore = defineStore('workspace', () => {
     selectProfile,
     renameProfile,
     deleteProfile,
-    moveBlock,
-    resizeBlock,
+    updateDashboardLayout,
     resetLayout,
     snapshot,
     restoreSnapshot,
