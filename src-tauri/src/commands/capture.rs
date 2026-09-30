@@ -43,14 +43,24 @@ pub async fn complete_region_selection(
     app: tauri::AppHandle,
     state: State<'_, AppState>,
 ) -> AppResult<CapturePayload> {
-    let scale = window.scale_factor().map_err(AppError::window)?;
-    let position = window.inner_position().map_err(AppError::window)?;
-    let monitor_name = window
+    let monitor = window
         .current_monitor()
         .map_err(AppError::window)?
-        .and_then(|monitor| monitor.name().map(ToOwned::to_owned));
+        .ok_or_else(|| AppError::new("monitor_missing", "Не найден монитор окна выделения"))?;
+    let scale = monitor.scale_factor();
+    let position = monitor.position();
+    let size = monitor.size();
+    let monitor_name = monitor.name().map(ToOwned::to_owned);
 
-    let region = physical_region(selection, position.x, position.y, scale, monitor_name)?;
+    let region = physical_region(
+        selection,
+        position.x,
+        position.y,
+        size.width,
+        size.height,
+        scale,
+        monitor_name,
+    )?;
     state.settings.set_capture_region(region.clone())?;
     overlay::hide_selection_overlays(&app)?;
 
@@ -59,7 +69,9 @@ pub async fn complete_region_selection(
     let region_for_capture = region.clone();
     let started = Instant::now();
     let task = tauri::async_runtime::spawn_blocking(move || {
-        std::thread::sleep(std::time::Duration::from_millis(120));
+        // DwmFlush in hide_selection_overlays waits for composition. Two extra
+        // desktop frames cover capture backends that read a slightly older frame.
+        std::thread::sleep(std::time::Duration::from_millis(50));
         let frame = capture.capture_region(&region_for_capture)?;
         let image = ImageBuffer::<Rgba<u8>, Vec<u8>>::from_raw(
             frame.width,
@@ -148,8 +160,10 @@ pub async fn complete_region_selection(
 
 fn physical_region(
     selection: SelectionRect,
-    window_x: i32,
-    window_y: i32,
+    monitor_x: i32,
+    monitor_y: i32,
+    monitor_width: u32,
+    monitor_height: u32,
     scale: f64,
     monitor_id: Option<String>,
 ) -> AppResult<CaptureRegion> {
@@ -166,11 +180,20 @@ fn physical_region(
         ));
     }
 
+    let left = (selection.x * scale).floor().max(0.0) as u32;
+    let top = (selection.y * scale).floor().max(0.0) as u32;
+    let right = ((selection.x + selection.width) * scale).ceil().max(1.0) as u32;
+    let bottom = ((selection.y + selection.height) * scale).ceil().max(1.0) as u32;
+    let left = left.min(monitor_width.saturating_sub(1));
+    let top = top.min(monitor_height.saturating_sub(1));
+    let right = right.clamp(left.saturating_add(1), monitor_width);
+    let bottom = bottom.clamp(top.saturating_add(1), monitor_height);
+
     Ok(CaptureRegion {
-        x: window_x.saturating_add((selection.x * scale).round() as i32),
-        y: window_y.saturating_add((selection.y * scale).round() as i32),
-        width: (selection.width * scale).round().max(1.0) as u32,
-        height: (selection.height * scale).round().max(1.0) as u32,
+        x: monitor_x.saturating_add(left as i32),
+        y: monitor_y.saturating_add(top as i32),
+        width: right - left,
+        height: bottom - top,
         monitor_id,
     })
 }
@@ -190,6 +213,8 @@ mod tests {
             },
             -1920,
             0,
+            2560,
+            1440,
             1.5,
             Some("secondary".into()),
         )
@@ -199,5 +224,53 @@ mod tests {
         assert_eq!(region.y, 30);
         assert_eq!(region.width, 300);
         assert_eq!(region.height, 150);
+    }
+
+    #[test]
+    fn rounds_physical_edges_instead_of_accumulating_width_error() {
+        let region = physical_region(
+            SelectionRect {
+                x: 10.4,
+                y: 20.4,
+                width: 10.4,
+                height: 10.4,
+            },
+            0,
+            0,
+            1920,
+            1080,
+            1.25,
+            None,
+        )
+        .expect("valid selection");
+
+        assert_eq!(region.x, 13);
+        assert_eq!(region.y, 25);
+        assert_eq!(region.width, 13);
+        assert_eq!(region.height, 14);
+    }
+
+    #[test]
+    fn clamps_selection_to_monitor_bounds() {
+        let region = physical_region(
+            SelectionRect {
+                x: 95.0,
+                y: 45.0,
+                width: 20.0,
+                height: 20.0,
+            },
+            -100,
+            200,
+            100,
+            50,
+            1.0,
+            None,
+        )
+        .expect("valid selection");
+
+        assert_eq!(region.x, -5);
+        assert_eq!(region.y, 245);
+        assert_eq!(region.width, 5);
+        assert_eq!(region.height, 5);
     }
 }

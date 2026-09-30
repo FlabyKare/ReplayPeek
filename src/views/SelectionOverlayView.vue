@@ -27,7 +27,11 @@ function renderSelectionFrame(): void {
   element.style.width = `${rect.width}px`
   element.style.height = `${rect.height}px`
   if (selectionSizeElement.value) {
-    selectionSizeElement.value.textContent = `${Math.round(rect.width * window.devicePixelRatio)} × ${Math.round(rect.height * window.devicePixelRatio)} px`
+    const sizeElement = selectionSizeElement.value
+    sizeElement.textContent = `${Math.round(rect.width * window.devicePixelRatio)} × ${Math.round(rect.height * window.devicePixelRatio)} px`
+    const placeAbove = rect.y + rect.height + 38 > window.innerHeight
+    sizeElement.style.top = placeAbove ? 'auto' : 'calc(100% + 8px)'
+    sizeElement.style.bottom = placeAbove ? 'calc(100% + 8px)' : 'auto'
   }
 }
 

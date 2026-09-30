@@ -1,6 +1,6 @@
 [package]
 name = "reply-overlay"
-version = "0.4.1"
+version = "0.4.2"
 description = "External Windows capture and reply overlay"
 authors = ["Reply Overlay contributors"]
 edition = "2021"
@@ -32,6 +32,7 @@ windows = { version = "0.61.3", features = [
   "Graphics_Imaging",
   "Media_Ocr",
   "Storage_Streams",
+  "Win32_Graphics_Dwm",
   "Win32_System_WinRT",
 ] }
 tauri-plugin-opener = "2"

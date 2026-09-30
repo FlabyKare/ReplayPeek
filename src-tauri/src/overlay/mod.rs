@@ -100,6 +100,18 @@ pub fn hide_selection_overlays(app: &tauri::AppHandle) -> AppResult<()> {
             window.hide().map_err(AppError::window)?;
         }
     }
+    flush_desktop_compositor()?;
+    Ok(())
+}
+
+#[cfg(target_os = "windows")]
+fn flush_desktop_compositor() -> AppResult<()> {
+    unsafe { windows::Win32::Graphics::Dwm::DwmFlush() }
+        .map_err(|error| AppError::window(format!("DWM flush: {error}")))
+}
+
+#[cfg(not(target_os = "windows"))]
+fn flush_desktop_compositor() -> AppResult<()> {
     Ok(())
 }
 

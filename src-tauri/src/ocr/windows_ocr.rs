@@ -55,10 +55,12 @@ impl OcrEngine for WindowsOcrEngine {
         let image = preprocessing::image_from_frame(frame)?;
         let max_dimension = WinOcrEngine::MaxImageDimension().map_err(AppError::ocr)?;
         let improved = preprocessing::improve_game_text(&image, max_dimension);
+        let bright_text = preprocessing::isolate_bright_text(&image, max_dimension, 185);
 
         let original = recognize_png(&engine, &preprocessing::encode_png(&image)?);
         let enhanced = recognize_png(&engine, &preprocessing::encode_png(&improved)?);
-        let candidate = choose_candidate(original, enhanced)?;
+        let bright = recognize_png(&engine, &preprocessing::encode_png(&bright_text)?);
+        let candidate = choose_best_candidate([original, enhanced, bright])?;
 
         Ok(OcrResult {
             text: candidate.text,
@@ -168,24 +170,29 @@ fn candidate_from_result(result: &WinOcrResult) -> AppResult<Candidate> {
     Ok(Candidate { text, lines })
 }
 
-fn choose_candidate(
-    original: AppResult<Candidate>,
-    enhanced: AppResult<Candidate>,
+fn choose_best_candidate<const N: usize>(
+    candidates: [AppResult<Candidate>; N],
 ) -> AppResult<Candidate> {
-    match (original, enhanced) {
-        (Ok(original), Ok(enhanced)) => {
-            if text_score(&enhanced.text) > text_score(&original.text) {
-                Ok(enhanced)
-            } else {
-                Ok(original)
-            }
+    let mut successes = Vec::new();
+    let mut errors = Vec::new();
+    for candidate in candidates {
+        match candidate {
+            Ok(candidate) => successes.push(candidate),
+            Err(error) => errors.push(error.to_string()),
         }
-        (Ok(candidate), Err(_)) | (Err(_), Ok(candidate)) => Ok(candidate),
-        (Err(original), Err(enhanced)) => Err(AppError::new(
-            "ocr_error",
-            format!("OCR оригинала: {original}; OCR после обработки: {enhanced}"),
-        )),
     }
+    successes
+        .into_iter()
+        .max_by_key(|candidate| text_score(&candidate.text))
+        .ok_or_else(|| {
+            AppError::new(
+                "ocr_error",
+                format!(
+                    "Все варианты OCR завершились с ошибкой: {}",
+                    errors.join("; ")
+                ),
+            )
+        })
 }
 
 fn normalize_line(value: &str) -> String {
@@ -360,16 +367,36 @@ fn median(mut values: Vec<f32>) -> Option<f32> {
     Some(values[values.len() / 2])
 }
 
-fn text_score(value: &str) -> usize {
+fn text_score(value: &str) -> i64 {
     let meaningful = value
         .chars()
         .filter(|character| character.is_alphanumeric())
-        .count();
-    meaningful * 3
-        + value
-            .chars()
-            .filter(|character| !character.is_whitespace())
-            .count()
+        .count() as i64;
+    let visible = value
+        .chars()
+        .filter(|character| !character.is_whitespace())
+        .count() as i64;
+    let isolated_characters = value
+        .split_whitespace()
+        .filter(|token| {
+            token
+                .chars()
+                .filter(|character| character.is_alphanumeric())
+                .count()
+                == 1
+        })
+        .count() as i64;
+    let capture_dimension_tokens = value
+        .split_whitespace()
+        .filter(|token| {
+            token.chars().any(|character| character.is_ascii_digit())
+                && token
+                    .chars()
+                    .any(|character| matches!(character, 'x' | 'X' | 'х' | 'Х' | '×'))
+        })
+        .count() as i64;
+
+    meaningful * 3 + visible - isolated_characters * 12 - capture_dimension_tokens * 60
 }
 
 #[cfg(test)]
@@ -387,6 +414,15 @@ mod tests {
     #[test]
     fn prefers_candidate_with_more_meaningful_text() {
         assert!(text_score("Player228: hello") > text_score("Player2"));
+    }
+
+    #[test]
+    fn penalizes_fragmented_text_and_capture_dimensions() {
+        let clean = "[ВСЕМ] игрок зсвсн infcction: ИДИ ДАЛЬШЕ";
+        let noisy = "[В С ЕМ] i nfect: апеИДИ ДАЛЬШЕ 545х78";
+        let incomplete = "[ВСЕМ] игрок ДАЛЬШЕ";
+        assert!(text_score(clean) > text_score(noisy));
+        assert!(text_score(clean) > text_score(incomplete));
     }
 
     #[test]
